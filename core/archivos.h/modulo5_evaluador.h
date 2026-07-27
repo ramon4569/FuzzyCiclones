@@ -3,7 +3,7 @@
 
 // ==========================================================
 // MODULO 5 — EVALUADOR Y VALIDACION
-// Responsable: (asignar integrante)
+// Responsable: Andrea
 //
 // Compara el riesgo predicho por el Modulo 4 contra la realidad
 // (campo hubo_ciclon de cada RegistroClimatico, poblado por el

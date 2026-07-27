@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -146,13 +147,108 @@ int importar_csv(const char* contenido) {
     return importados;
 }
 
+// Busca "clave": <numero> dentro de un objeto JSON (ya extraido, sin
+// llaves anidadas) y devuelve el numero en 'valor'. No es un parser
+// JSON general: alcanza para objetos planos con pares clave-numero,
+// que es todo lo que necesita RegistroClimatico. Devuelve 0 si la
+// clave no aparece o no la sigue un numero valido.
+static int extraer_numero_json(const char* objeto, const char* clave, double* valor) {
+    char patron[32];
+    snprintf(patron, sizeof(patron), "\"%s\"", clave);
+
+    const char* pos = strstr(objeto, patron);
+    if (!pos) {
+        return 0;
+    }
+    pos += strlen(patron);
+
+    while (*pos == ' ' || *pos == '\t') {
+        pos++;
+    }
+    if (*pos != ':') {
+        return 0;
+    }
+    pos++;
+    while (*pos == ' ' || *pos == '\t') {
+        pos++;
+    }
+
+    char* fin;
+    double v = strtod(pos, &fin);
+    if (fin == pos) {
+        return 0; // no habia un numero despues de los ':'
+    }
+
+    *valor = v;
+    return 1;
+}
+
+// Llena 'out' con los valores de un objeto JSON ya extraido (con sus
+// llaves { }). Exige que las 11 claves esten presentes, igual de
+// estricto que parsear_linea_csv() con las columnas del CSV.
+static int parsear_objeto_json(const char* objeto, RegistroClimatico* out) {
+    double v;
+
+    if (!extraer_numero_json(objeto, "anio", &v)) return 0;
+    out->anio = (int)v;
+    if (!extraer_numero_json(objeto, "mes", &v)) return 0;
+    out->mes = (int)v;
+    if (!extraer_numero_json(objeto, "dia", &v)) return 0;
+    out->dia = (int)v;
+    if (!extraer_numero_json(objeto, "lat", &v)) return 0;
+    out->latitud = v;
+    if (!extraer_numero_json(objeto, "lon", &v)) return 0;
+    out->longitud = v;
+    if (!extraer_numero_json(objeto, "sst", &v)) return 0;
+    out->sst = v;
+    if (!extraer_numero_json(objeto, "presion", &v)) return 0;
+    out->presion = v;
+    if (!extraer_numero_json(objeto, "humedad", &v)) return 0;
+    out->humedad = v;
+    if (!extraer_numero_json(objeto, "viento", &v)) return 0;
+    out->viento = v;
+    if (!extraer_numero_json(objeto, "cizalladura", &v)) return 0;
+    out->cizalladura = v;
+    if (!extraer_numero_json(objeto, "hubo_ciclon", &v)) return 0;
+    out->hubo_ciclon = (int)v;
+
+    return 1;
+}
+
 int importar_json(const char* contenido) {
-    // TODO: parsear un array de objetos JSON con las mismas claves
-    // que las columnas del CSV. Se puede reutilizar/adaptar el
-    // parser simple que ya existe en modulo3_importar.c de
-    // ProyectoBisect como punto de partida (busqueda de claves con
-    // strstr, sin libreria externa de JSON).
-    return -1;
+    if (!contenido) {
+        return -1;
+    }
+
+    int importados = 0;
+    const char* cursor = contenido;
+
+    // Los objetos de este formato son planos (sin objetos/arrays
+    // anidados dentro de cada registro), asi que el primer '}' que
+    // aparece despues de un '{' siempre es su cierre.
+    while ((cursor = strchr(cursor, '{')) != NULL) {
+        const char* fin = strchr(cursor, '}');
+        if (!fin) {
+            break;
+        }
+
+        size_t largo = (size_t)(fin - cursor) + 1;
+        char* objeto = (char*)malloc(largo + 1);
+        if (objeto) {
+            memcpy(objeto, cursor, largo);
+            objeto[largo] = '\0';
+
+            RegistroClimatico r;
+            if (parsear_objeto_json(objeto, &r) && dataset_insertar(r) >= 0) {
+                importados++;
+            }
+            free(objeto);
+        }
+
+        cursor = fin + 1;
+    }
+
+    return importados;
 }
 
 int importar_hurdat2(const char* contenido) {

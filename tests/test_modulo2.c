@@ -148,10 +148,45 @@ static void probar_csv_lineas_corruptas(void) {
     printf("  dataset_total(): %d\n", dataset_total());
 }
 
+static void probar_json_valido(void) {
+    printf("\n=== importar_json: array de objetos valido ===\n");
+    const char* json =
+        "[\n"
+        "  {\"anio\":2015,\"mes\":8,\"dia\":10,\"lat\":15.2,\"lon\":-60.1,"
+        "\"sst\":27.8,\"presion\":1011,\"humedad\":68,\"viento\":25,"
+        "\"cizalladura\":14,\"hubo_ciclon\":0},\n"
+        "  {\"anio\":2015,\"mes\":8,\"dia\":28,\"lat\":17.4,\"lon\":-62.3,"
+        "\"sst\":28.6,\"presion\":1004,\"humedad\":78,\"viento\":55,"
+        "\"cizalladura\":7,\"hubo_ciclon\":1}\n"
+        "]";
+
+    dataset_inicializar();
+    int importados = importar_json(json);
+    printf("  objetos importados: %d (esperado 2)\n", importados);
+    for (int i = 0; i < dataset_total(); i++) {
+        imprimir_registro(i);
+    }
+}
+
+static void probar_json_objeto_incompleto(void) {
+    printf("\n=== importar_json: objeto con clave faltante se descarta ===\n");
+    const char* json =
+        "[{\"anio\":2015,\"mes\":8,\"dia\":10,\"lat\":15.2,\"lon\":-60.1,"
+        "\"sst\":27.8,\"presion\":1011,\"humedad\":68,\"viento\":25,"
+        "\"cizalladura\":14,\"hubo_ciclon\":0},"
+        "{\"anio\":2016,\"mes\":9,\"dia\":5}]"; // falta la mayoria de las claves
+
+    dataset_inicializar();
+    int importados = importar_json(json);
+    printf("  objetos importados: %d (esperado 1 de 2)\n", importados);
+}
+
 int main(void) {
     printf("=== Test Modulo 2 (importador) ===\n\n");
     probar_deteccion();
     probar_csv_valido();
     probar_csv_lineas_corruptas();
+    probar_json_valido();
+    probar_json_objeto_incompleto();
     return 0;
 }

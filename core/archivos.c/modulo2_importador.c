@@ -251,16 +251,187 @@ int importar_json(const char* contenido) {
     return importados;
 }
 
-int importar_hurdat2(const char* contenido) {
-    // TODO: parsear el formato oficial de NOAA HURDAT2. Estructura:
-    //   - lineas de encabezado por ciclon: AL092017, IRMA, <n_lineas>,
-    //   - seguidas de <n_lineas> filas con fecha, hora, lat, lon,
-    //     viento maximo, presion minima, etc.
-    // Este modulo no necesariamente crea RegistroClimatico nuevos:
-    // su tarea principal es marcar hubo_ciclon=1 en los registros
-    // del dataset (Modulo 1) que coincidan en fecha/zona con un
-    // ciclon real, para que el Modulo 5 pueda validar contra ellos.
+// Quita espacios/tabs al inicio y al final de 's', in-place.
+static void recortar(char* s) {
+    char* inicio = s;
+    while (*inicio == ' ' || *inicio == '\t') {
+        inicio++;
+    }
+    if (inicio != s) {
+        memmove(s, inicio, strlen(inicio) + 1);
+    }
+
+    size_t len = strlen(s);
+    while (len > 0 && (s[len - 1] == ' ' || s[len - 1] == '\t')) {
+        s[len - 1] = '\0';
+        len--;
+    }
+}
+
+// Convierte un campo de coordenada HURDAT2 (ej. "16.1N" o " 26.9W")
+// a double con signo. 'signo_positivo' es la letra que corresponde a
+// positivo ('N' para latitud, 'E' para longitud).
+static int parsear_coordenada_hurdat2(const char* campo, char signo_positivo, double* valor) {
+    size_t len = strlen(campo);
+    if (len < 2) {
+        return 0;
+    }
+    char letra = (char)toupper((unsigned char)campo[len - 1]);
+    if (!isalpha((unsigned char)letra)) {
+        return 0;
+    }
+
+    char numero[16];
+    if (len - 1 >= sizeof(numero)) {
+        return 0;
+    }
+    memcpy(numero, campo, len - 1);
+    numero[len - 1] = '\0';
+
+    char* fin;
+    double v = strtod(numero, &fin);
+    if (fin == numero) {
+        return 0;
+    }
+
+    *valor = (letra == signo_positivo) ? v : -v;
+    return 1;
+}
+
+// Parsea una linea de "track" (no de encabezado) de HURDAT2:
+// YYYYMMDD, HHMM, RecId, Status, Lat, Lon, VientoMax, PresionMin, ...
+// Solo nos interesan los primeros 8 campos; el resto (radios de
+// viento por cuadrante) no lo usa este modulo. 'linea' se modifica
+// in-place (strtok).
+static int parsear_linea_track_hurdat2(char* linea, int* anio, int* mes, int* dia,
+                                        double* lat, double* lon) {
+    char* campos[8];
+    int n = 0;
+    char* tok = strtok(linea, ",");
+    while (tok != NULL && n < 8) {
+        campos[n++] = tok;
+        tok = strtok(NULL, ",");
+    }
+    if (n < 8) {
+        return 0;
+    }
+    for (int i = 0; i < n; i++) {
+        recortar(campos[i]);
+    }
+
+    if (strlen(campos[0]) != 8) {
+        return 0;
+    }
+    char buf[5];
+    char* fin;
+
+    memcpy(buf, campos[0], 4);
+    buf[4] = '\0';
+    *anio = (int)strtol(buf, &fin, 10);
+    if (*fin != '\0') return 0;
+
+    memcpy(buf, campos[0] + 4, 2);
+    buf[2] = '\0';
+    *mes = (int)strtol(buf, &fin, 10);
+    if (*fin != '\0') return 0;
+
+    memcpy(buf, campos[0] + 6, 2);
+    buf[2] = '\0';
+    *dia = (int)strtol(buf, &fin, 10);
+    if (*fin != '\0') return 0;
+
+    if (!parsear_coordenada_hurdat2(campos[4], 'N', lat)) return 0;
+    if (!parsear_coordenada_hurdat2(campos[5], 'E', lon)) return 0;
+
+    return 1;
+}
+
+// Margen (en grados) para considerar que un registro climatico del
+// dataset esta en la misma "zona" que la posicion exacta de un
+// ciclon real: HURDAT2 da el ojo del ciclon, pero los registros del
+// dataset son observaciones de la region, no de ese punto exacto.
+#define HURDAT2_RADIO_ZONA_GRADOS 2.0
+
+// Busca en el dataset (Modulo 1, solo lectura: dataset_get/dataset_total)
+// un registro con la misma fecha y una posicion cercana. Devuelve el
+// indice del primer match, o -1 si no hay ninguno.
+static int buscar_registro_por_fecha_zona(int anio, int mes, int dia, double lat, double lon) {
+    int total = dataset_total();
+    for (int i = 0; i < total; i++) {
+        RegistroClimatico r = dataset_get(i);
+        if (r.anio != anio || r.mes != mes || r.dia != dia) {
+            continue;
+        }
+        double dlat = r.latitud - lat;
+        double dlon = r.longitud - lon;
+        if (dlat < 0) dlat = -dlat;
+        if (dlon < 0) dlon = -dlon;
+        if (dlat <= HURDAT2_RADIO_ZONA_GRADOS && dlon <= HURDAT2_RADIO_ZONA_GRADOS) {
+            return i;
+        }
+    }
     return -1;
+}
+
+int importar_hurdat2(const char* contenido) {
+    if (!contenido) {
+        return -1;
+    }
+
+    int procesadas = 0;
+    const char* cursor = contenido;
+
+    while (*cursor != '\0') {
+        const char* fin_linea = strchr(cursor, '\n');
+        size_t largo = fin_linea ? (size_t)(fin_linea - cursor) : strlen(cursor);
+        size_t largo_real = largo;
+        if (largo_real > 0 && cursor[largo_real - 1] == '\r') {
+            largo_real--;
+        }
+
+        if (largo_real > 0) {
+            char* linea = (char*)malloc(largo_real + 1);
+            if (linea) {
+                memcpy(linea, cursor, largo_real);
+                linea[largo_real] = '\0';
+
+                // Las lineas de encabezado de ciclon (ej. "AL092017, IRMA, 39,")
+                // no traen fecha/posicion: solo procesamos lineas de track,
+                // que arrancan con la fecha YYYYMMDD.
+                if (!es_encabezado_hurdat2(linea)) {
+                    int anio, mes, dia;
+                    double lat, lon;
+                    if (parsear_linea_track_hurdat2(linea, &anio, &mes, &dia, &lat, &lon)) {
+                        procesadas++;
+
+                        int indice = buscar_registro_por_fecha_zona(anio, mes, dia, lat, lon);
+                        if (indice >= 0) {
+                            // BLOQUEADO — pendiente de coordinar con Modulo 1:
+                            // aqui habria que marcar el registro g_dataset[indice]
+                            // como hubo_ciclon = 1, pero modulo1_dataset.h todavia
+                            // no expone ninguna funcion para modificar un registro
+                            // ya insertado (dataset_get() devuelve una COPIA, no
+                            // un puntero). Hace falta algo como
+                            // dataset_marcar_ciclon(int indice) o
+                            // dataset_actualizar(int indice, RegistroClimatico r)
+                            // del lado de Modulo 1. El match se detecta
+                            // correctamente (linea de arriba), pero no se puede
+                            // persistir hasta que exista esa funcion.
+                        }
+                    }
+                }
+
+                free(linea);
+            }
+        }
+
+        cursor += largo;
+        if (*cursor == '\n') {
+            cursor++;
+        }
+    }
+
+    return procesadas;
 }
 
 int importar_archivo(const char* contenido) {

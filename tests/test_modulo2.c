@@ -181,6 +181,40 @@ static void probar_json_objeto_incompleto(void) {
     printf("  objetos importados: %d (esperado 1 de 2)\n", importados);
 }
 
+static void probar_hurdat2(void) {
+    printf("\n=== importar_hurdat2: parseo y matching por fecha/zona ===\n");
+
+    // Simulamos que el CSV/JSON de 2017 ya se importo antes: dos
+    // registros con hubo_ciclon=0 (todavia no se sabe si hubo ciclon).
+    dataset_inicializar();
+    RegistroClimatico r1 = {2017, 8, 30, 16.8, -61.5, 28.7, 1003, 79, 60, 6, 0};
+    RegistroClimatico r2 = {2017, 9, 6, 18.4, -63.1, 29.1, 995, 85, 120, 4, 0};
+    dataset_insertar(r1);
+    dataset_insertar(r2);
+
+    const char* hurdat2 =
+        "AL092017,             IRMA,     39,\n"
+        // coincide en fecha y zona con r1 (16.8N/61.5W vs registro en 16.8/-61.5)
+        "20170830, 0000,  , TD, 16.8N,  61.5W,  30, 1006, -999, -999, -999,\n"
+        // coincide con r2 (18.4N/63.1W vs registro en 18.4/-63.1)
+        "20170906, 1200,  , HU, 18.4N,  63.1W, 100,  950, -999, -999, -999,\n"
+        // no coincide con ningun registro cargado (otra fecha/zona)
+        "20170701, 0000,  , TD,  5.0N,  10.0W,  25, 1010, -999, -999, -999,\n";
+
+    int procesadas = importar_hurdat2(hurdat2);
+    printf("  lineas de track procesadas: %d (esperado 3)\n", procesadas);
+
+    // IMPORTANTE (ver TODO en importar_hurdat2): el match se detecta
+    // internamente pero todavia no se puede persistir porque Modulo 1
+    // no expone forma de actualizar un registro ya insertado. Por eso
+    // hubo_ciclon sigue en 0 aca — es el comportamiento esperado HOY,
+    // no un bug de este modulo.
+    printf("  r1.hubo_ciclon = %d (sigue en 0: bloqueado por falta de setter en Modulo 1)\n",
+           dataset_get(0).hubo_ciclon);
+    printf("  r2.hubo_ciclon = %d (sigue en 0: bloqueado por falta de setter en Modulo 1)\n",
+           dataset_get(1).hubo_ciclon);
+}
+
 int main(void) {
     printf("=== Test Modulo 2 (importador) ===\n\n");
     probar_deteccion();
@@ -188,5 +222,6 @@ int main(void) {
     probar_csv_lineas_corruptas();
     probar_json_valido();
     probar_json_objeto_incompleto();
+    probar_hurdat2();
     return 0;
 }

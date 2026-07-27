@@ -55,6 +55,7 @@ int dataset_insertar(RegistroClimatico r) {
 }
 
 
+
 // Obtiene una copia del registro solicitado.
 // Si el índice es inválido devuelve un registro vacío.
 RegistroClimatico dataset_get(int index) {

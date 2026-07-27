@@ -215,6 +215,34 @@ static void probar_hurdat2(void) {
            dataset_get(1).hubo_ciclon);
 }
 
+static void probar_importar_archivo_end_to_end(void) {
+    printf("\n=== importar_archivo(): dispatcher end-to-end ===\n");
+
+    dataset_inicializar();
+    char* csv = leer_archivo("data/entrenamiento_2015_2016.csv");
+    if (csv) {
+        printf("  CSV      -> %d registros (esperado 6)\n", importar_archivo(csv));
+        free(csv);
+    } else {
+        printf("  [SKIP] no se encontro data/entrenamiento_2015_2016.csv\n");
+    }
+
+    dataset_inicializar();
+    printf("  JSON     -> %d registros (esperado 1)\n",
+           importar_archivo("[{\"anio\":2017,\"mes\":1,\"dia\":1,\"lat\":10.0,\"lon\":-50.0,"
+                             "\"sst\":27.0,\"presion\":1010,\"humedad\":70,\"viento\":20,"
+                             "\"cizalladura\":10,\"hubo_ciclon\":0}]"));
+
+    dataset_inicializar();
+    printf("  HURDAT2  -> %d lineas de track procesadas (esperado 1)\n",
+           importar_archivo("AL092017,             IRMA,     39,\n"
+                             "20170830, 0000,  , TD, 16.8N,  61.5W,  30, 1006, -999,\n"));
+
+    printf("  Vacio    -> %d (esperado -1)\n", importar_archivo(""));
+    printf("  NULL     -> %d (esperado -1)\n", importar_archivo(NULL));
+    printf("  Basura   -> %d (esperado -1)\n", importar_archivo("esto no es nada reconocible"));
+}
+
 int main(void) {
     printf("=== Test Modulo 2 (importador) ===\n\n");
     probar_deteccion();
@@ -223,5 +251,6 @@ int main(void) {
     probar_json_valido();
     probar_json_objeto_incompleto();
     probar_hurdat2();
+    probar_importar_archivo_end_to_end();
     return 0;
 }

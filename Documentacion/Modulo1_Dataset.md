@@ -228,6 +228,7 @@ Se verificó el correcto funcionamiento de:
 - filtrado por año
 - actualización del campo `hubo_ciclon`
 
+
 ---
 
 # Historial de implementación (rama `m1`)

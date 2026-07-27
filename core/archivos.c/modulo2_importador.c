@@ -48,14 +48,102 @@ FormatoArchivo importador_detectar_formato(const char* contenido) {
     return FORMATO_DESCONOCIDO;
 }
 
+// Cantidad de columnas esperadas en cada linea de datos del CSV:
+// anio,mes,dia,lat,lon,sst,presion,humedad,viento,cizalladura,hubo_ciclon
+#define CSV_NUM_COLUMNAS 11
+
+// Interpreta una sola linea de datos (sin el encabezado) y llena 'out'.
+// 'linea' se modifica in-place (strtok corta la cadena). Devuelve 1 si
+// las 11 columnas estaban presentes y eran numericas, 0 si la linea
+// esta corrupta (se debe descartar sin frenar el resto del archivo).
+static int parsear_linea_csv(char* linea, RegistroClimatico* out) {
+    char* campos[CSV_NUM_COLUMNAS];
+    int n = 0;
+
+    char* tok = strtok(linea, ",");
+    while (tok != NULL && n < CSV_NUM_COLUMNAS) {
+        campos[n++] = tok;
+        tok = strtok(NULL, ",");
+    }
+    if (n < CSV_NUM_COLUMNAS) {
+        return 0;
+    }
+
+    char* fin;
+    out->anio = (int)strtol(campos[0], &fin, 10);
+    if (*fin != '\0') return 0;
+    out->mes = (int)strtol(campos[1], &fin, 10);
+    if (*fin != '\0') return 0;
+    out->dia = (int)strtol(campos[2], &fin, 10);
+    if (*fin != '\0') return 0;
+    out->latitud = strtod(campos[3], &fin);
+    if (*fin != '\0') return 0;
+    out->longitud = strtod(campos[4], &fin);
+    if (*fin != '\0') return 0;
+    out->sst = strtod(campos[5], &fin);
+    if (*fin != '\0') return 0;
+    out->presion = strtod(campos[6], &fin);
+    if (*fin != '\0') return 0;
+    out->humedad = strtod(campos[7], &fin);
+    if (*fin != '\0') return 0;
+    out->viento = strtod(campos[8], &fin);
+    if (*fin != '\0') return 0;
+    out->cizalladura = strtod(campos[9], &fin);
+    if (*fin != '\0') return 0;
+    out->hubo_ciclon = (int)strtol(campos[10], &fin, 10);
+    if (*fin != '\0') return 0;
+
+    return 1;
+}
+
 int importar_csv(const char* contenido) {
-    // TODO:
-    // 1. saltar la linea de encabezado
-    // 2. por cada linea: separar por comas (strtok o similar)
-    // 3. armar un RegistroClimatico y llamar a dataset_insertar()
-    // 4. contar cuantas filas se importaron con exito y retornarlo
-    // Cuidado con lineas vacias al final del archivo.
-    return -1;
+    if (!contenido) {
+        return -1;
+    }
+
+    int importados = 0;
+    const char* cursor = contenido;
+    int es_encabezado = 1;
+
+    // Recorremos linea por linea manualmente (en vez de strtok sobre
+    // todo el archivo) porque cada linea se vuelve a tokenizar por
+    // comas mas abajo: strtok guarda un unico puntero interno global,
+    // asi que anidar dos strtok sobre buffers distintos rompe el de
+    // "afuera" a mitad de camino.
+    while (*cursor != '\0') {
+        const char* fin_linea = strchr(cursor, '\n');
+        size_t largo = fin_linea ? (size_t)(fin_linea - cursor) : strlen(cursor);
+
+        // Tolerar saltos de linea estilo Windows (\r\n)
+        size_t largo_real = largo;
+        if (largo_real > 0 && cursor[largo_real - 1] == '\r') {
+            largo_real--;
+        }
+
+        if (es_encabezado) {
+            es_encabezado = 0;
+        } else if (largo_real > 0) {
+            char* linea = (char*)malloc(largo_real + 1);
+            if (linea) {
+                memcpy(linea, cursor, largo_real);
+                linea[largo_real] = '\0';
+
+                RegistroClimatico r;
+                if (parsear_linea_csv(linea, &r) && dataset_insertar(r) >= 0) {
+                    importados++;
+                }
+                free(linea);
+            }
+        }
+        // linea vacia (largo_real == 0, ej. ultima linea del archivo): se ignora
+
+        cursor += largo;
+        if (*cursor == '\n') {
+            cursor++;
+        }
+    }
+
+    return importados;
 }
 
 int importar_json(const char* contenido) {

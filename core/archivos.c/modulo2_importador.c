@@ -1,16 +1,50 @@
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "../archivos.h/modulo2_importador.h"
 #include "../archivos.h/modulo1_dataset.h"
 
+// Un encabezado HURDAT2 arranca con el codigo de cuenca del ciclon:
+// dos letras (ej. "AL" de Atlantico) seguidas de 6 digitos
+// (2 de numero de ciclon + 4 de anio), ej. "AL092017".
+static int es_encabezado_hurdat2(const char* p) {
+    if (!(isalpha((unsigned char)p[0]) && isalpha((unsigned char)p[1]))) {
+        return 0;
+    }
+    for (int i = 2; i < 8; i++) {
+        if (!isdigit((unsigned char)p[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 FormatoArchivo importador_detectar_formato(const char* contenido) {
-    // TODO: mirar los primeros caracteres no-espacio de 'contenido':
-    //   - si empieza con '[' o '{'                -> FORMATO_JSON
-    //   - si la primera linea tiene comas y un encabezado tipo
-    //     "anio,mes,dia,..."                        -> FORMATO_CSV
-    //   - si el patron coincide con lineas HURDAT2
-    //     (ej. "AL092017,IRMA,...")                 -> FORMATO_HURDAT2
-    //   - si no calza con nada                        -> FORMATO_DESCONOCIDO
+    if (!contenido) {
+        return FORMATO_DESCONOCIDO;
+    }
+
+    // Saltar espacios/saltos de linea iniciales para no confundirnos
+    // con archivos que empiezan con espacios en blanco.
+    const char* p = contenido;
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
+        p++;
+    }
+
+    if (*p == '[' || *p == '{') {
+        return FORMATO_JSON;
+    }
+
+    if (es_encabezado_hurdat2(p)) {
+        return FORMATO_HURDAT2;
+    }
+
+    // CSV: la primera linea debe ser el encabezado esperado, empezando
+    // por la columna "anio" (ver contrato en el .h).
+    if (strncmp(p, "anio", 4) == 0) {
+        return FORMATO_CSV;
+    }
+
     return FORMATO_DESCONOCIDO;
 }
 

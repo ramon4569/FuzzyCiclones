@@ -75,8 +75,27 @@ static void imprimir_registro(int i) {
            i, r.anio, r.mes, r.dia, r.sst, r.presion, r.humedad, r.viento, r.cizalladura, r.hubo_ciclon);
 }
 
+static void probar_deteccion(void) {
+    struct { const char* nombre; const char* contenido; FormatoArchivo esperado; } casos[] = {
+        { "CSV",          "anio,mes,dia,lat,lon,sst,presion,humedad,viento,cizalladura,hubo_ciclon\n2015,8,10,15.2,-60.1,27.8,1011,68,25,14,0", FORMATO_CSV },
+        { "JSON array",   "[{\"anio\":2015}]", FORMATO_JSON },
+        { "JSON objeto",  "{\"anio\":2015}", FORMATO_JSON },
+        { "HURDAT2",      "AL092017,             IRMA,     39,\n20170830, 0000,  , TD, 16.1N,  26.9W,  30, 1006,", FORMATO_HURDAT2 },
+        { "Desconocido",  "esto no es nada reconocible", FORMATO_DESCONOCIDO },
+        { "Vacio",        "", FORMATO_DESCONOCIDO },
+    };
+    int n = (int)(sizeof(casos) / sizeof(casos[0]));
+
+    printf("=== importador_detectar_formato ===\n");
+    for (int i = 0; i < n; i++) {
+        FormatoArchivo obtenido = importador_detectar_formato(casos[i].contenido);
+        const char* resultado = (obtenido == casos[i].esperado) ? "OK" : "FALLO";
+        printf("  [%s] %-12s -> obtenido=%d esperado=%d\n", resultado, casos[i].nombre, obtenido, casos[i].esperado);
+    }
+}
+
 int main(void) {
-    printf("=== Test Modulo 2 (importador) ===\n");
-    printf("(harness listo — todavia no hay funciones implementadas para probar)\n");
+    printf("=== Test Modulo 2 (importador) ===\n\n");
+    probar_deteccion();
     return 0;
 }

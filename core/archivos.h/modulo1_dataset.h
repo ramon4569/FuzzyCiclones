@@ -45,7 +45,7 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
 // Util para separar "entrenamiento 2015-2016" de "prueba 2017".
 // Retorna la cantidad de registros copiados a destino.
 int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
-    RegistroClimatico* destino, int max_destino);
+                              RegistroClimatico* destino, int max_destino);
 
 // Actualiza el campo hubo_ciclon de un registro existente.
 // Retorna 1 si la actualización fue exitosa o 0 si el índice es inválido.

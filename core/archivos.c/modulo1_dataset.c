@@ -8,6 +8,7 @@
 static RegistroClimatico g_dataset[MAX_REGISTROS];
 static int g_total = 0;
 
+
 // Obtiene el valor de una variable climática según el índice
 // definido por las constantes VAR_*.
 // Devuelve 0.0 si el índice recibido no es válido.
@@ -46,12 +47,13 @@ void dataset_limpiar(void) {
 int dataset_insertar(RegistroClimatico r) {
 
     if (g_total >= MAX_REGISTROS) {
-        return -1;
-    }
+    return -1;
+}
     g_dataset[g_total] = r;
     g_total++;
     return g_total - 1;
 }
+
 
 // Obtiene una copia del registro solicitado.
 // Si el índice es inválido devuelve un registro vacío.
@@ -60,8 +62,8 @@ RegistroClimatico dataset_get(int index) {
     if (!indice_valido(index)) {
         RegistroClimatico vacio;
         memset(&vacio, 0, sizeof(vacio));
-        return vacio;
-    }
+    return vacio;
+}
     return g_dataset[index];
 }
 
@@ -75,8 +77,8 @@ int dataset_total(void) {
 double dataset_promedio_variable(int indice_variable) {
 
     if (g_total == 0) {
-        return 0.0;
-    }
+    return 0.0;
+}
     double suma = 0.0;
     for (int i = 0; i < g_total; i++) {
         suma += variable_de(&g_dataset[i], indice_variable);
@@ -120,7 +122,7 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
 // encuentre dentro del rango especificado.
 // Devuelve la cantidad de registros copiados.
 int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
-    RegistroClimatico* destino, int max_destino) {
+                              RegistroClimatico* destino, int max_destino) {
 
     int copiados = 0;
     for (int i = 0; i < g_total && copiados < max_destino; i++) {
@@ -138,8 +140,8 @@ int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
 // recibido no es válido.
 int dataset_marcar_ciclon(int index, int valor) {
     if (!indice_valido(index)) {
-        return 0;
-    }
+    return 0;
+}
     g_dataset[index].hubo_ciclon = valor;
     return 1;
 }

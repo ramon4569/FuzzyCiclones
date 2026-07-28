@@ -4,21 +4,67 @@
 #include "../archivos.h/modulo4_entrenamiento.h"
 #include "../archivos.h/modulo1_dataset.h"
 
+// NOTA: Esta funcion asume que entrenamiento_predecir() ya se ejecuto
+// exitosamente desde el Modulo 4, y que los riesgos para los datos de prueba
+// de 2017 ya estan disponibles en entrenamiento_obtener_riesgo().
 ResultadoEvaluacion evaluador_calcular_metricas(double umbral) {
     ResultadoEvaluacion r = {0};
+    RegistroClimatico pruebas[MAX_REGISTROS];
 
-    // TODO:
-    // 1. recorrer los registros de prueba (mismo orden que se le
-    //    paso a entrenamiento_predecir())
-    // 2. para cada uno: prediccion = entrenamiento_obtener_riesgo(i) >= umbral
-    //    y realidad = registro.hubo_ciclon
-    // 3. acumular en r.verdaderos_positivos / falsos_positivos /
-    //    verdaderos_negativos / falsos_negativos segun corresponda
-    // 4. al final, calcular:
-    //    r.exactitud     = (VP+VN) / total
-    //    r.precision      = VP / (VP+FP)   (cuidado con division por 0)
-    //    r.sensibilidad    = VP / (VP+FN)
-    //    r.f1_score         = 2*precision*recall / (precision+recall)
+    // Segun la arquitectura, el modelo se entrena con 2015-2016 y se prueba
+    // con 2017. Extraemos los registros de prueba de 2017 para evaluarlos, 
+    // garantizando que esten en el mismo orden que se usaron en Modulo 4.
+    int n_pruebas = dataset_filtrar_por_anio(2017, 2017, pruebas, MAX_REGISTROS);
+
+    if (n_pruebas == 0) {
+        // Retornamos todo en 0 como indicador de que no hubo datos para evaluar
+        return r;
+    }
+
+    for (int i = 0; i < n_pruebas; i++) {
+
+        RegistroClimatico registro = pruebas[i];
+        double riesgo = entrenamiento_obtener_riesgo(i);
+        
+        int prediccion = (riesgo >= umbral) ? 1 : 0;
+        int realidad = registro.hubo_ciclon;
+
+        if (prediccion == 1 && realidad == 1) {
+            r.verdaderos_positivos++;
+        } else if (prediccion == 1 && realidad == 0) {
+            r.falsos_positivos++;
+        } else if (prediccion == 0 && realidad == 0) {
+            r.verdaderos_negativos++;
+        } else if (prediccion == 0 && realidad == 1) {
+            r.falsos_negativos++;
+        }
+    }
+
+    int total = r.verdaderos_positivos + r.verdaderos_negativos + r.falsos_positivos + r.falsos_negativos;
+    
+    if (total > 0) {
+        r.exactitud = (double)(r.verdaderos_positivos + r.verdaderos_negativos) / total;
+    } else {
+        r.exactitud = 0.0;
+    }
+
+    if ((r.verdaderos_positivos + r.falsos_positivos) > 0) {
+        r.precision = (double)r.verdaderos_positivos / (r.verdaderos_positivos + r.falsos_positivos);
+    } else {
+        r.precision = 0.0;
+    }
+
+    if ((r.verdaderos_positivos + r.falsos_negativos) > 0) {
+        r.sensibilidad = (double)r.verdaderos_positivos / (r.verdaderos_positivos + r.falsos_negativos);
+    } else {
+        r.sensibilidad = 0.0;
+    }
+
+    if ((r.precision + r.sensibilidad) > 0.0) {
+        r.f1_score = 2.0 * (r.precision * r.sensibilidad) / (r.precision + r.sensibilidad);
+    } else {
+        r.f1_score = 0.0;
+    }
 
     return r;
 }
@@ -27,8 +73,6 @@ char* evaluador_generar_reporte_json(double umbral) {
     static char buffer[1024];
     ResultadoEvaluacion r = evaluador_calcular_metricas(umbral);
 
-    // TODO: revisar el formato final acordado con el Modulo 6/7,
-    // este es un punto de partida razonable.
     snprintf(buffer, sizeof(buffer),
         "{\"umbral\":%.2f,"
         "\"matriz_confusion\":{\"vp\":%d,\"fp\":%d,\"vn\":%d,\"fn\":%d},"

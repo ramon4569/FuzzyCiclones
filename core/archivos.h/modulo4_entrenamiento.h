@@ -1,4 +1,4 @@
-#ifndef MODULO4_ENTRENAMIENTO_H
+    #ifndef MODULO4_ENTRENAMIENTO_H
 #define MODULO4_ENTRENAMIENTO_H
 
 #include "registro.h"

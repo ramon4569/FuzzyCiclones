@@ -126,7 +126,7 @@ header h1 { margin: 0; font-size: 1.8rem; }
 }
 .barra-riesgo {
     height: 10px;
-    border-radius: 5px;
+    bornder-radius: 5px;
     background: linear-gradient(90deg, var(--bajo), var(--moderado), var(--alerta));
 }
 

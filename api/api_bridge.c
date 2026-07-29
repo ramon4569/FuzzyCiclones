@@ -72,6 +72,7 @@ int api_dataset_total(void) {
     return dataset_total();
 }
 
+
 EMSCRIPTEN_KEEPALIVE
 void api_dataset_limpiar(void) {
     dataset_limpiar();
@@ -115,7 +116,7 @@ char* api_cargar_prueba(char* contenido, int anio_inicio, int anio_fin) {
 EMSCRIPTEN_KEEPALIVE
 char* api_entrenar(int anio_inicio, int anio_fin, int n_clusters, double m,
     int max_iter, double epsilon) {
-    static char buffer[2048];
+    static char buffer[16384];
 
     int iteraciones = entrenamiento_entrenar(anio_inicio, anio_fin, n_clusters,
         m, max_iter, epsilon);
@@ -129,7 +130,7 @@ char* api_entrenar(int anio_inicio, int anio_fin, int n_clusters, double m,
 
     int total_clusters = fcm_obtener_num_clusters();
     double centroide[NUM_VARIABLES];
-    char centroides_json[1536];
+    char centroides_json[12288];
     char item[256];
 
     centroides_json[0] = '\0';
@@ -179,17 +180,30 @@ char* api_predecir(void) {
     buffer[0] = '\0';
     strcat(buffer, "[");
 
-    char item[256];
+    char item[512];
     for (int i = 0; i < g_total_prueba; i++) {
-        double riesgo = entrenamiento_obtener_riesgo(i);
+        double breakdown[NUM_VARIABLES];
+        double riesgo = entrenamiento_obtener_riesgo_detallado(i, breakdown);
         snprintf(item, sizeof(item),
-            "%s{\"anio\":%d,\"mes\":%d,\"dia\":%d,\"riesgo\":%.4f,\"hubo_ciclon\":%d}",
+            "%s{\"anio\":%d,\"mes\":%d,\"dia\":%d,\"lat\":%.2f,\"lon\":%.2f,\"riesgo\":%.4f,\"hubo_ciclon\":%d,"
+            "\"sst\":%.2f,\"presion\":%.2f,\"humedad\":%.2f,\"viento\":%.2f,"
+            "\"inf_sst\":%.4f,\"inf_presion\":%.4f,\"inf_humedad\":%.4f,\"inf_viento\":%.4f}",
             (i > 0) ? "," : "",
             g_buffer_prueba[i].anio,
             g_buffer_prueba[i].mes,
             g_buffer_prueba[i].dia,
+            g_buffer_prueba[i].latitud,
+            g_buffer_prueba[i].longitud,
             riesgo,
-            g_buffer_prueba[i].hubo_ciclon);
+            g_buffer_prueba[i].hubo_ciclon,
+            g_buffer_prueba[i].sst,
+            g_buffer_prueba[i].presion,
+            g_buffer_prueba[i].humedad,
+            g_buffer_prueba[i].viento,
+            breakdown[VAR_SST],
+            breakdown[VAR_PRESION],
+            breakdown[VAR_HUMEDAD],
+            breakdown[VAR_VIENTO]);
         strncat(buffer, item, sizeof(buffer) - strlen(buffer) - 1);
     }
     strncat(buffer, "]", sizeof(buffer) - strlen(buffer) - 1);
@@ -205,7 +219,7 @@ char* api_predecir(void) {
 // reales, usando el umbral indicado (ej. 0.5).
 EMSCRIPTEN_KEEPALIVE
 char* api_evaluar(double umbral) {
-    return evaluador_generar_reporte_json(umbral);
+    return evaluador_generar_reporte_json(umbral, g_buffer_prueba, g_total_prueba);
 }
 
 // -----------------------------------------------------------

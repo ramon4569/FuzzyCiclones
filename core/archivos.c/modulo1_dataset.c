@@ -1,17 +1,18 @@
 #include <string.h>
+#include <stdio.h>
 #include "../archivos.h/modulo1_dataset.h"
 
 // Dataset almacenado completamente en memoria.
-// Se utiliza un arreglo est·tico y un contador para evitar
-// asignaciÛn din·mica de memoria.
+// Se utiliza un arreglo est√°tico y un contador para evitar
+// asignaci√≥n din√°mica de memoria.
 
 static RegistroClimatico g_dataset[MAX_REGISTROS];
 static int g_total = 0;
 
 
-// Obtiene el valor de una variable clim·tica seg˙n el Ìndice
+// Obtiene el valor de una variable clim√°tica seg√∫n el √≠ndice
 // definido por las constantes VAR_*.
-// Devuelve 0.0 si el Ìndice recibido no es v·lido.
+// Devuelve 0.0 si el √≠ndice recibido no es v√°lido.
 static double variable_de(const RegistroClimatico* r, int indice_variable) {
     switch (indice_variable) {
     case VAR_SST:         return r->sst;
@@ -23,7 +24,7 @@ static double variable_de(const RegistroClimatico* r, int indice_variable) {
     }
 }
 
-// Verifica si un Ìndice pertenece al rango v·lido del dataset.
+// Verifica si un √≠ndice pertenece al rango v√°lido del dataset.
 static int indice_valido(int index) {
     return index >= 0 && index < g_total;
 }
@@ -42,8 +43,8 @@ void dataset_limpiar(void) {
 }
 
 // Inserta un nuevo registro en el dataset.
-// Devuelve el Ìndice donde fue almacenado o -1 si el
-// arreglo alcanzÛ su capacidad m·xima.
+// Devuelve el √≠ndice donde fue almacenado o -1 si el
+// arreglo alcanz√≥ su capacidad m√°xima.
 int dataset_insertar(RegistroClimatico r) {
 
     if (g_total >= MAX_REGISTROS) {
@@ -57,7 +58,7 @@ int dataset_insertar(RegistroClimatico r) {
 
 
 // Obtiene una copia del registro solicitado.
-// Si el Ìndice es inv·lido devuelve un registro vacÌo.
+// Si el √≠ndice es inv√°lido devuelve un registro vac√≠o.
 RegistroClimatico dataset_get(int index) {
 
     if (!indice_valido(index)) {
@@ -73,7 +74,7 @@ int dataset_total(void) {
     return g_total;
 }
 
-// Calcula el promedio de una variable clim·tica
+// Calcula el promedio de una variable clim√°tica
 // recorriendo todos los registros almacenados.
 double dataset_promedio_variable(int indice_variable) {
 
@@ -87,12 +88,12 @@ double dataset_promedio_variable(int indice_variable) {
     return suma / g_total;
 }
 
-// Calcula el valor mÌnimo y m·ximo de cada variable
-// clim·tica presente en el dataset.
+// Calcula el valor m√≠nimo y m√°ximo de cada variable
+// clim√°tica presente en el dataset.
 void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES]) {
 
-    // Si el dataset est· vacÌo, todos los valores
-   // mÌnimos y m·ximos se inicializan en cero.
+    // Si el dataset est√° vac√≠o, todos los valores
+   // m√≠nimos y m√°ximos se inicializan en cero.
     if (g_total == 0) {
         for (int v = 0; v < NUM_VARIABLES; v++) {
             min_out[v] = 0.0;
@@ -101,7 +102,7 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
         return;
     }
 
-    // Inicializa los mÌnimos y m·ximos con el primer registro.
+    // Inicializa los m√≠nimos y m√°ximos con el primer registro.
     for (int v = 0; v < NUM_VARIABLES; v++) {
         double val0 = variable_de(&g_dataset[0], v);
         min_out[v] = val0;
@@ -109,7 +110,7 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
     }
 
     // Recorre el resto de los registros actualizando
-    // los valores mÌnimos y m·ximos encontrados.
+    // los valores m√≠nimos y m√°ximos encontrados.
     for (int i = 1; i < g_total; i++) {
         for (int v = 0; v < NUM_VARIABLES; v++) {
             double val = variable_de(&g_dataset[i], v);
@@ -119,7 +120,7 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
     }
 }
 
-// Copia al arreglo destino los registros cuyo aÒo se
+// Copia al arreglo destino los registros cuyo a√±o se
 // encuentre dentro del rango especificado.
 // Devuelve la cantidad de registros copiados.
 int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
@@ -137,8 +138,8 @@ int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
 
 // Permite actualizar el campo hubo_ciclon de un registro
 // ya almacenado en el dataset.
-// Devuelve 1 si la operaciÛn fue exitosa o 0 si el Ìndice
-// recibido no es v·lido.
+// Devuelve 1 si la operaci√≥n fue exitosa o 0 si el √≠ndice
+// recibido no es v√°lido.
 int dataset_marcar_ciclon(int index, int valor) {
     if (!indice_valido(index)) {
     return 0;

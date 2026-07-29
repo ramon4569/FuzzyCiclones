@@ -18,7 +18,7 @@
 //   Actualizar:  mu_ij = 1 / sum_k( (d_ij/d_ik)^(2/(m-1)) )
 // ==========================================================
 
-#define MAX_CLUSTERS 6
+#define MAX_CLUSTERS 100
 
 // Inicializa la matriz de pertenencia (mu) de tamano n_puntos x n_clusters
 // con valores aleatorios, normalizando cada fila para que sume 1.0

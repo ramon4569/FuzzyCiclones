@@ -132,7 +132,7 @@ int fcm_ejecutar(const double datos[][NUM_VARIABLES], int n_puntos,
     int n_clusters, double m, int max_iter, double epsilon) {
     fcm_inicializar_membresias(n_puntos, n_clusters);
 
-    double membresias_previas[MAX_REGISTROS][MAX_CLUSTERS];
+    static double membresias_previas[MAX_REGISTROS][MAX_CLUSTERS];
     int iteracion;
 
     for (iteracion = 0; iteracion < max_iter; iteracion++) {

@@ -6,6 +6,7 @@
  * ============================================================ */
 
 #include <stddef.h>
+#include <stdio.h>
 #include "../archivos.h/modulo4_entrenamiento.h"
 #include "../archivos.h/modulo1_dataset.h"
 #include "../archivos.h/modulo3_fcm_core.h"
@@ -22,9 +23,9 @@ static int    g_n_prueba = 0;   /* cantidad de registros de la ultima prediccion
  * con MAX_REGISTROS = 2000 y NUM_VARIABLES = 5, cada uno pesa
  * 2000*5*8 bytes = 80 KB, que es mejor no meter en el stack
  * (mas aun pensando en el build final con Emscripten). */
-static double g_vectores_entrenamiento[MAX_REGISTROS][NUM_VARIABLES];
+double g_vectores_entrenamiento[MAX_REGISTROS][NUM_VARIABLES];
 static double g_vectores_prueba[MAX_REGISTROS][NUM_VARIABLES];
-static RegistroClimatico g_buffer_filtrado[MAX_REGISTROS];
+RegistroClimatico g_buffer_filtrado[MAX_REGISTROS];
 
 
 int entrenamiento_entrenar(int anio_inicio, int anio_fin, int n_clusters,
@@ -139,4 +140,48 @@ double entrenamiento_obtener_riesgo(int index) {
     }
 
     return fcm_obtener_membresia(index, g_cluster_riesgo);
+}
+
+double entrenamiento_obtener_riesgo_detallado(int index, double breakdown[NUM_VARIABLES]) {
+    double riesgo = entrenamiento_obtener_riesgo(index);
+    
+    // Inicializar breakdown a 0
+    for(int i = 0; i < NUM_VARIABLES; i++) breakdown[i] = 0.0;
+    
+    if (riesgo < 0) return riesgo; // Error de inicializacion/index
+    
+    // Obtener el centroide de riesgo
+    double centroide[NUM_VARIABLES];
+    fcm_obtener_centroide(g_cluster_riesgo, centroide);
+    
+    // Calcular la contribucion de cada variable a la distancia (cuadrada)
+    double distancia_total = 0.0;
+    double distancias_parciales[NUM_VARIABLES];
+    
+    for (int k = 0; k < NUM_VARIABLES; k++) {
+        double diff = g_vectores_prueba[index][k] - centroide[k];
+        distancias_parciales[k] = diff * diff;
+        distancia_total += distancias_parciales[k];
+    }
+    
+    // Convertir a porcentajes (influencia relativa en acercar el punto al cluster)
+    // Mientras más cerca esté (menor diferencia), mayor afinidad a esa característica.
+    // Wait: si la distancia parcial es 0 (igual al centroide), su contribución a la membresía (afinidad) es máxima.
+    // Por lo tanto, podemos invertir la distancia para ver la afinidad.
+    // O si consideramos "qué variable nos empujó más a este cluster", es un poco ambiguo.
+    // Vamos a usar la inversa de la diferencia: 1 / (diff^2 + eps).
+    
+    double afinidad_total = 0.0;
+    double afinidades_parciales[NUM_VARIABLES];
+    
+    for(int k = 0; k < NUM_VARIABLES; k++) {
+        afinidades_parciales[k] = 1.0 / (distancias_parciales[k] + 1e-10);
+        afinidad_total += afinidades_parciales[k];
+    }
+    
+    for(int k = 0; k < NUM_VARIABLES; k++) {
+        breakdown[k] = afinidades_parciales[k] / afinidad_total;
+    }
+    
+    return riesgo;
 }

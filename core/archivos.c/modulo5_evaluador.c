@@ -7,14 +7,8 @@
 // NOTA: Esta funcion asume que entrenamiento_predecir() ya se ejecuto
 // exitosamente desde el Modulo 4, y que los riesgos para los datos de prueba
 // de 2017 ya estan disponibles en entrenamiento_obtener_riesgo().
-ResultadoEvaluacion evaluador_calcular_metricas(double umbral) {
+ResultadoEvaluacion evaluador_calcular_metricas(double umbral, const RegistroClimatico* pruebas, int n_pruebas) {
     ResultadoEvaluacion r = {0};
-    RegistroClimatico pruebas[MAX_REGISTROS];
-
-    // Segun la arquitectura, el modelo se entrena con 2015-2016 y se prueba
-    // con 2017. Extraemos los registros de prueba de 2017 para evaluarlos, 
-    // garantizando que esten en el mismo orden que se usaron en Modulo 4.
-    int n_pruebas = dataset_filtrar_por_anio(2017, 2017, pruebas, MAX_REGISTROS);
 
     if (n_pruebas == 0) {
         // Retornamos todo en 0 como indicador de que no hubo datos para evaluar
@@ -69,15 +63,21 @@ ResultadoEvaluacion evaluador_calcular_metricas(double umbral) {
     return r;
 }
 
-char* evaluador_generar_reporte_json(double umbral) {
+char* evaluador_generar_reporte_json(double umbral, const RegistroClimatico* pruebas, int n_pruebas) {
     static char buffer[1024];
-    ResultadoEvaluacion r = evaluador_calcular_metricas(umbral);
+    
+    if (n_pruebas == 0) {
+        snprintf(buffer, sizeof(buffer), "{\"exito\":0,\"mensaje\":\"No hay datos de prueba\"}");
+        return buffer;
+    }
+
+    ResultadoEvaluacion r = evaluador_calcular_metricas(umbral, pruebas, n_pruebas);
 
     snprintf(buffer, sizeof(buffer),
-        "{\"umbral\":%.2f,"
-        "\"matriz_confusion\":{\"vp\":%d,\"fp\":%d,\"vn\":%d,\"fn\":%d},"
-        "\"metricas\":{\"exactitud\":%.4f,\"precision\":%.4f,"
-        "\"sensibilidad\":%.4f,\"f1_score\":%.4f}}",
+        "{\"exito\":1,\"umbral\":%.2f,"
+        "\"matriz_confusion\":{\"verdaderos_positivos\":%d,\"falsos_positivos\":%d,\"verdaderos_negativos\":%d,\"falsos_negativos\":%d},"
+        "\"metricas\":{\"accuracy\":%.4f,\"precision\":%.4f,"
+        "\"recall\":%.4f,\"f1_score\":%.4f}}",
         umbral,
         r.verdaderos_positivos, r.falsos_positivos,
         r.verdaderos_negativos, r.falsos_negativos,

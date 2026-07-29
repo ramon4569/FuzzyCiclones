@@ -1,7 +1,9 @@
 #include "../archivos.h/registro.h"
 
 void registro_a_vector(const RegistroClimatico* r, double vector_out[NUM_VARIABLES]) {
-    // TODO: copiar r->sst, r->presion, r->humedad, r->viento, r->cizalladura
-    // a vector_out en el orden VAR_SST, VAR_PRESION, VAR_HUMEDAD, VAR_VIENTO,
-    // VAR_CIZALLADURA (ver constantes en registro.h).
+    vector_out[VAR_SST] = r->sst;
+    vector_out[VAR_PRESION] = r->presion;
+    vector_out[VAR_HUMEDAD] = r->humedad;
+    vector_out[VAR_VIENTO] = r->viento;
+    vector_out[VAR_CIZALLADURA] = r->cizalladura;
 }

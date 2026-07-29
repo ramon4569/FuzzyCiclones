@@ -25,9 +25,15 @@ FormatoArchivo importador_detectar_formato(const char* contenido) {
         return FORMATO_DESCONOCIDO;
     }
 
+    const char* p = contenido;
+    
+    // Ignorar BOM UTF-8 si esta presente
+    if ((unsigned char)p[0] == 0xEF && (unsigned char)p[1] == 0xBB && (unsigned char)p[2] == 0xBF) {
+        p += 3;
+    }
+
     // Saltar espacios/saltos de linea iniciales para no confundirnos
     // con archivos que empiezan con espacios en blanco.
-    const char* p = contenido;
     while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
         p++;
     }
@@ -72,26 +78,37 @@ static int parsear_linea_csv(char* linea, RegistroClimatico* out) {
 
     char* fin;
     out->anio = (int)strtol(campos[0], &fin, 10);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->mes = (int)strtol(campos[1], &fin, 10);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->dia = (int)strtol(campos[2], &fin, 10);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->latitud = strtod(campos[3], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->longitud = strtod(campos[4], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->sst = strtod(campos[5], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->presion = strtod(campos[6], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->humedad = strtod(campos[7], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->viento = strtod(campos[8], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->cizalladura = strtod(campos[9], &fin);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
     out->hubo_ciclon = (int)strtol(campos[10], &fin, 10);
+    while(*fin == ' ' || *fin == '\t' || *fin == '\r') fin++;
     if (*fin != '\0') return 0;
 
     return 1;
@@ -406,17 +423,8 @@ int importar_hurdat2(const char* contenido) {
 
                         int indice = buscar_registro_por_fecha_zona(anio, mes, dia, lat, lon);
                         if (indice >= 0) {
-                            // BLOQUEADO — pendiente de coordinar con Modulo 1:
-                            // aqui habria que marcar el registro g_dataset[indice]
-                            // como hubo_ciclon = 1, pero modulo1_dataset.h todavia
-                            // no expone ninguna funcion para modificar un registro
-                            // ya insertado (dataset_get() devuelve una COPIA, no
-                            // un puntero). Hace falta algo como
-                            // dataset_marcar_ciclon(int indice) o
-                            // dataset_actualizar(int indice, RegistroClimatico r)
-                            // del lado de Modulo 1. El match se detecta
-                            // correctamente (linea de arriba), pero no se puede
-                            // persistir hasta que exista esa funcion.
+                            // Desbloqueado: se actualiza el dataset
+                            dataset_marcar_ciclon(indice, 1);
                         }
                     }
                 }

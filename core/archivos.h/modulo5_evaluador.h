@@ -1,6 +1,8 @@
 #ifndef MODULO5_EVALUADOR_H
 #define MODULO5_EVALUADOR_H
 
+#include "../archivos.h/registro.h"
+
 // ==========================================================
 // MODULO 5 — EVALUADOR Y VALIDACION
 // Responsable: Andrea
@@ -27,10 +29,10 @@ typedef struct {
 // Recorre los registros de prueba ya evaluados por el Modulo 4 y arma
 // la matriz de confusion, usando 'umbral' para decidir si
 // entrenamiento_obtener_riesgo(i) >= umbral cuenta como "predijo ciclon".
-ResultadoEvaluacion evaluador_calcular_metricas(double umbral);
+ResultadoEvaluacion evaluador_calcular_metricas(double umbral, const RegistroClimatico* pruebas, int n_pruebas);
 
 // Genera un reporte en formato JSON con la matriz de confusion y las
 // metricas, listo para que el Modulo 6 (API bridge) lo devuelva al frontend.
-char* evaluador_generar_reporte_json(double umbral);
+char* evaluador_generar_reporte_json(double umbral, const RegistroClimatico* pruebas, int n_pruebas);
 
 #endif // MODULO5_EVALUADOR_H

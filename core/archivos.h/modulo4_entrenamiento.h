@@ -47,4 +47,9 @@ int entrenamiento_identificar_cluster_riesgo(void);
 // Este numero ES el "riesgo de ciclon" que se reporta al usuario.
 double entrenamiento_obtener_riesgo(int index);
 
+// Nuevo: Obtiene el riesgo y también calcula la influencia (%) de cada
+// variable sobre ese riesgo. 'breakdown' se llena con valores 0.0-1.0
+// sumando 1.0 en total, indicando la contribucion de cada variable.
+double entrenamiento_obtener_riesgo_detallado(int index, double breakdown[NUM_VARIABLES]);
+
 #endif // MODULO4_ENTRENAMIENTO_H

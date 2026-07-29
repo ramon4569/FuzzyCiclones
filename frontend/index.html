@@ -17,7 +17,7 @@
         <p class="loading-sub">Cargando modulo WASM...</p>
     </div>
 
-    <!-- HEADER -->
+    <!-- HEADER PRINCIPAL-->
     <header>
         <div class="container-header">
             <h1>🌀 Predictor de Riesgo de Ciclones</h1>
@@ -42,29 +42,24 @@
                 <p class="section-desc">Importa el historial climatico (CSV, JSON o HURDAT2)</p>
             </div>
 
-            <div class="input-group">
-                <label for="input-archivo">Archivo de entrenamiento (ej. 2015-2016)</label>
-                <input type="file" id="input-archivo-train" accept=".csv,.json,.txt">
-                <button class="btn btn-primary" onclick="cargarArchivo('train')">Importar entrenamiento</button>
+            <div class="file-card">
+                <label>Archivo de entrenamiento <span class="file-card-hint">(ej. 2015-2016)</span></label>
+                <div class="file-card-row">
+                    <input type="file" id="input-archivo-train" accept=".csv,.json,.txt">
+                    <button class="btn btn-primary" onclick="cargarArchivo('train')">Importar entrenamiento</button>
+                </div>
             </div>
 
-            <div class="input-group">
-                <label for="input-archivo">Archivo de prueba (ej. 2017)</label>
-                <input type="file" id="input-archivo-test" accept=".csv,.json,.txt">
-                <button class="btn btn-primary" onclick="cargarArchivo('test')">Importar prueba</button>
+            <div class="file-card">
+                <label>Archivo de prueba <span class="file-card-hint">(ej. 2017)</span></label>
+                <div class="file-card-row">
+                    <input type="file" id="input-archivo-test" accept=".csv,.json,.txt">
+                    <button class="btn btn-primary" onclick="cargarArchivo('test')">Importar prueba</button>
+                </div>
             </div>
 
             <div id="resultado-importacion" class="resultado-box"></div>
 
-            <table class="tabla" id="tabla-dataset">
-                <thead>
-                    <tr>
-                        <th>Fecha</th><th>SST</th><th>Presion</th><th>Humedad</th>
-                        <th>Viento</th><th>Cizalladura</th><th>Ciclon real</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-dataset-body"></tbody>
-            </table>
         </section>
 
         <!-- VISTA 2: ENTRENAMIENTO (Modulo 3 + Modulo 4) -->

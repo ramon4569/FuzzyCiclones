@@ -14,21 +14,21 @@
 // No sabe nada de FCM ni de archivos, solo administra datos.
 // ==========================================================
 
-// Inicializa (limpia) el dataset en memoria
+// Inicializa el dataset dejando el contador de registros en cero.
 void dataset_inicializar(void);
 
-// Inserta un registro al final del dataset.
-// Retorna el indice donde quedo insertado, o -1 si esta lleno.
+// Inserta una copia del registro al final del dataset.
+// Retorna el índice donde quedó almacenado o -1 si el dataset está lleno.
 int dataset_insertar(RegistroClimatico r);
 
-// Retorna el registro en la posicion indicada
+// Retorna una copia del registro ubicado en la posición indicada.
+// Si el índice es inválido devuelve un RegistroClimatico vacío.
 RegistroClimatico dataset_get(int index);
 
 // Retorna la cantidad de registros actualmente cargados
 int dataset_total(void);
 
-// Vacia el dataset (equivalente a inicializar, se deja separado
-// por claridad semantica: "reiniciar" vs "limpiar antes de importar")
+// Elimina todos los registros del dataset.
 void dataset_limpiar(void);
 
 // Retorna el promedio de una variable climatica sobre todo el dataset.
@@ -46,5 +46,10 @@ void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES
 // Retorna la cantidad de registros copiados a destino.
 int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
                               RegistroClimatico* destino, int max_destino);
+
+// Actualiza el campo hubo_ciclon de un registro existente.
+// Retorna 1 si la actualización fue exitosa o 0 si el índice es inválido.
+int dataset_marcar_ciclon(int index, int valor);
+
 
 #endif // MODULO1_DATASET_H

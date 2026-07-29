@@ -4,23 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Predictor de Riesgo de Ciclones — Fuzzy C-Means</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <!-- LOADING SCREEN -->
     <div id="loading-screen">
-        <p class="loading-text">Predictor de Riesgo de Ciclones</p>
-        <div class="loading-bar-track">
-            <div id="loading-bar-fill" class="loading-bar-fill"></div>
+        <img src="hurricane_real.jpg" class="hurricane-real" alt="Fondo Huracan">
+        
+        <div class="loading-content">
+            <img src="white_swirl_logo.jpg" alt="Logo Ciclones" class="logo-loading" />
+            <h1 class="loading-text">Predictor de Riesgo de Ciclones</h1>
+            <div class="loading-bar-container">
+                <div class="loading-bar-track">
+                    <div class="loading-bar-fill" id="loading-bar-fill"></div>
+                </div>
+            </div>
+            <p class="loading-sub" id="loading-status">Cargando modulo WASM...</p>
         </div>
-        <p class="loading-sub">Cargando modulo WASM...</p>
+        
+        <div class="loading-footer">Datos NOAA-NHC simulados</div>
     </div>
 
-    <!-- HEADER -->
+    <!-- HEADER PRINCIPAL-->
     <header>
         <div class="container-header">
-            <h1>🌀 Predictor de Riesgo de Ciclones</h1>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <img src="white_swirl_logo.jpg" alt="Logo Ciclones" class="logo-header" />
+                <h1>Predictor de Riesgo de Ciclones</h1>
+            </div>
             <p class="subtitle">Fuzzy C-Means aplicado a datos climaticos del Caribe</p>
         </div>
     </header>
@@ -31,40 +45,71 @@
         <button class="nav-btn" onclick="mostrarVista('entrenamiento')">2. Entrenamiento</button>
         <button class="nav-btn" onclick="mostrarVista('prediccion')">3. Prediccion</button>
         <button class="nav-btn" onclick="mostrarVista('evaluacion')">4. Evaluacion</button>
+        <button class="nav-btn" onclick="mostrarVista('tiemporeal')">5. Tiempo Real</button>
+        <button class="nav-btn" onclick="mostrarVista('ayuda')">6. Ayuda</button>
     </nav>
 
     <main class="container">
 
-        <!-- VISTA 1: IMPORTAR DATOS (Modulo 1 + Modulo 2) -->
+        <!-- VISTA 1: IMPORTAR DATOS (Modulo 1 y 2) -->
         <section id="vista-datos" class="vista">
             <div class="section-header">
-                <h2>Datos climaticos</h2>
-                <p class="section-desc">Importa el historial climatico (CSV, JSON o HURDAT2)</p>
+                <h2>Importación de Datos Históricos</h2>
+                <p class="section-desc">Carga la data oceánica y atmosférica de entrenamiento y evaluación</p>
             </div>
 
-            <div class="input-group">
-                <label for="input-archivo">Archivo de entrenamiento (ej. 2015-2016)</label>
-                <input type="file" id="input-archivo-train" accept=".csv,.json,.txt">
-                <button class="btn btn-primary" onclick="cargarArchivo('train')">Importar entrenamiento</button>
-            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Opcion A: Archivos CSV locales -->
+                <div style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <h3 style="margin-top:0; font-size:16px; margin-bottom:15px;">Opción A: Archivos Locales (CSV)</h3>
+                    <div class="file-card">
+                        <h3 class="file-title">Set de Entrenamiento</h3>
+                        <div class="file-card-row">
+                            <input type="file" id="input-archivo-train" accept=".csv,.json">
+                            <button class="btn btn-primary" onclick="cargarArchivo('train')">Subir</button>
+                        </div>
+                    </div>
 
-            <div class="input-group">
-                <label for="input-archivo">Archivo de prueba (ej. 2017)</label>
-                <input type="file" id="input-archivo-test" accept=".csv,.json,.txt">
-                <button class="btn btn-primary" onclick="cargarArchivo('test')">Importar prueba</button>
+                    <div class="file-card">
+                        <h3 class="file-title">Set de Prueba (Evaluación posterior)</h3>
+                        <div class="file-card-row">
+                            <input type="file" id="input-archivo-test" accept=".csv,.json">
+                            <button class="btn btn-secondary" onclick="cargarArchivo('test')">Subir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Opcion B: API Open-Meteo -->
+                <div style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+                    <h3 style="margin-top:0; font-size:16px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                        Opción B: Descarga desde API <span style="background:var(--azul-claro); color:#000; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">NUEVO</span>
+                    </h3>
+                    <div class="file-card" style="margin-bottom:0; height:calc(100% - 35px);">
+                        <p style="font-size:12px; color:var(--gray-400); margin-bottom:15px; line-height:1.4;">
+                            El sistema se conectará a Open-Meteo Historical Archive para descargar miles de registros diarios del Caribe y prepararlos para entrenamiento automáticamente.
+                        </p>
+                        
+                        <div class="input-group" style="margin-bottom: 15px;">
+                            <label>Año Inicio</label>
+                            <input type="number" id="api-anio-inicio" value="2015" min="1940" max="2025" style="width:80px">
+                            <label style="margin-left:10px">Año Fin</label>
+                            <input type="number" id="api-anio-fin" value="2016" min="1940" max="2025" style="width:80px">
+                        </div>
+
+                        <div style="display:flex; gap: 10px;">
+                            <button class="btn btn-primary" id="btn-api-importar-train" onclick="obtenerEntrenamientoAPI('train')" style="flex:1; font-size:11px;">
+                                Descargar Entrenamiento
+                            </button>
+                            <button class="btn btn-secondary" id="btn-api-importar-test" onclick="obtenerEntrenamientoAPI('test')" style="flex:1; font-size:11px;">
+                                Descargar Prueba
+                            </button>
+                        </div>
+                        <p id="status-api-importar" style="font-size:11px; color:var(--azul-claro); margin-top:10px; text-align:center; min-height: 15px;"></p>
+                    </div>
+                </div>
             </div>
 
             <div id="resultado-importacion" class="resultado-box"></div>
-
-            <table class="tabla" id="tabla-dataset">
-                <thead>
-                    <tr>
-                        <th>Fecha</th><th>SST</th><th>Presion</th><th>Humedad</th>
-                        <th>Viento</th><th>Cizalladura</th><th>Ciclon real</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-dataset-body"></tbody>
-            </table>
         </section>
 
         <!-- VISTA 2: ENTRENAMIENTO (Modulo 3 + Modulo 4) -->
@@ -75,11 +120,11 @@
             </div>
 
             <div class="input-group">
-                <label>Numero de clusters (c)</label>
+                <label class="tooltip" data-tooltip="Define cuántos grupos climáticos se identificarán (ej. 70). A mayor número, más finos y específicos serán los patrones encontrados.">Numero de clusters (c)</label>
                 <input type="number" id="param-clusters" value="3" min="2" max="6">
-                <label>Exponente difuso (m)</label>
+                <label class="tooltip" data-tooltip="Determina qué tan 'borrosos' son los límites entre cada grupo. 2.0 es el valor estándar; valores mayores suavizan más las clasificaciones.">Exponente difuso (m)</label>
                 <input type="number" id="param-m" value="2.0" step="0.1" min="1.1">
-                <label>Iteraciones maximas</label>
+                <label class="tooltip" data-tooltip="Número máximo de veces que el algoritmo repetirá sus cálculos buscando perfeccionar y afinar los centros de cada patrón climático.">Iteraciones maximas</label>
                 <input type="number" id="param-max-iter" value="100">
                 <button class="btn btn-primary" onclick="entrenarModelo()">Entrenar modelo</button>
             </div>
@@ -97,6 +142,11 @@
 
             <button class="btn btn-primary" onclick="predecir()">Ejecutar prediccion</button>
 
+            <!-- Contenedor del Mapa (Oculto hasta predecir) -->
+            <div id="mapa-container" style="display:none; margin-top: 20px;">
+                <div id="map" style="height: 400px; width: 100%; border-radius: 8px; border: 1px solid #3d4a5d; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></div>
+            </div>
+
             <div id="mapa-calor" class="mapa-calor"></div>
         </section>
 
@@ -108,7 +158,7 @@
             </div>
 
             <div class="input-group">
-                <label>Umbral de riesgo</label>
+                <label class="tooltip" data-tooltip="Valor (0 a 1) que indica qué grado de similitud mínimo debe tener el clima actual con un patrón de 'alto riesgo' para disparar una alerta inminente de ciclón.">Umbral de riesgo</label>
                 <input type="number" id="param-umbral" value="0.5" step="0.05" min="0" max="1">
                 <button class="btn btn-primary" onclick="evaluarModelo()">Evaluar</button>
             </div>
@@ -116,8 +166,74 @@
             <div id="resultado-evaluacion" class="resultado-box"></div>
         </section>
 
+        <!-- VISTA 5: TIEMPO REAL -->
+        <section id="vista-tiemporeal" class="vista" style="display:none">
+            <div class="section-header">
+                <h2>Predicción en Tiempo Real (API)</h2>
+                <p class="section-desc">Obtiene las variables oceánicas y atmosféricas actuales del Caribe y las procesa con FCM</p>
+            </div>
+
+            <button class="btn btn-primary" id="btn-tiemporeal" onclick="obtenerYPredecirTiempoReal()">
+                Obtener datos (Open-Meteo) y Predecir
+            </button>
+            <div id="status-tiemporeal" style="margin-top: 15px; font-weight: bold; color: var(--gray-300);"></div>
+
+            <!-- Contenedor del Mapa en Tiempo Real -->
+            <div id="mapa-tiemporeal-container" style="display:none; margin-top: 20px;">
+                <div id="map-realtime" style="height: 400px; width: 100%; border-radius: 8px; border: 1px solid #3d4a5d; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></div>
+            </div>
+            
+            <div id="mapa-calor-tiemporeal" class="mapa-calor"></div>
+        </section>
+
+        <!-- VISTA 6: AYUDA / ACERCA DE -->
+        <section id="vista-ayuda" class="vista" style="display:none">
+            <div class="section-header">
+                <h2>Acerca del Sistema & Guía de Uso</h2>
+                <p class="section-desc">Conoce al equipo y aprende a utilizar la plataforma</p>
+            </div>
+            
+            <div class="ayuda-grid">
+                <!-- Acerca de -->
+                <div class="ayuda-card about-card">
+                    <h3>👥 Quiénes Somos</h3>
+                    <p>Somos un equipo enfocado en el desarrollo de <strong>herramientas predictivas climatológicas</strong> de próxima generación. Nuestro objetivo es mitigar riesgos en la cuenca del Atlántico aplicando inteligencia artificial (Fuzzy C-Means) sobre datos históricos marinos y atmosféricos (NOAA, HURDAT2, Open-Meteo).</p>
+                    <p>Esta plataforma en <em>WebAssembly</em> nos permite correr modelos analíticos complejos directamente en tu navegador, sin latencia de servidores.</p>
+                </div>
+
+                <!-- Como Usar -->
+                <div class="ayuda-card guide-card">
+                    <h3>🚀 Guía Paso a Paso</h3>
+                    <ol class="pasos-lista">
+                        <li>
+                            <span class="paso-num">1</span>
+                            <div><strong>Importar Datos:</strong> Dirígete a la pestaña <em>1. Datos</em> y sube tus registros históricos en formato CSV, JSON o el estándar HURDAT2.</div>
+                        </li>
+                        <li>
+                            <span class="paso-num">2</span>
+                            <div><strong>Entrenar Modelo:</strong> Ve a <em>2. Entrenamiento</em>. Selecciona el rango de años a analizar, y ajusta los parámetros de FCM (clústers, fuzziness). Pulsa en "Entrenar modelo".</div>
+                        </li>
+                        <li>
+                            <span class="paso-num">3</span>
+                            <div><strong>Predicción:</strong> En la pestaña <em>3. Predicción</em> podrás subir nuevos datos de prueba y visualizarlos en el 🗺️ mapa interactivo con sus niveles de riesgo.</div>
+                        </li>
+                        <li>
+                            <span class="paso-num">4</span>
+                            <div><strong>Evaluación:</strong> Contrasta las predicciones contra la realidad en la pestaña <em>4. Evaluación</em> usando una matriz de confusión automática.</div>
+                        </li>
+                        <li>
+                            <span class="paso-num">5</span>
+                            <div><strong>Tiempo Real:</strong> Entra a <em>5. Tiempo Real</em> para obtener el clima actual (SST, presión, viento) y calcular riesgos hoy mismo vía satélite.</div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
     </main>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="fcm.js"></script>
     <script src="app.js"></script>
 </body>

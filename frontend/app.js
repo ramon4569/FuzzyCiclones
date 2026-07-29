@@ -1,13 +1,13 @@
 // ==========================================================
 // MODULO 7 — FRONTEND / VISUALIZADOR
-// Responsable: (asignar integrante)
+// Responsable: Rachel
 //
 // Toda la comunicacion con C pasa por M.ccall(), usando las
 // funciones exportadas en api_bridge.c (Modulo 6). Este archivo
 // NO implementa el algoritmo: solo pide datos y los dibuja.
 // ==========================================================
 
-let M; // instancia del modulo WASM (equivalente a "BisectModule" en ProyectoBisect)
+let M; // instancia del modulo WASM
 
 // Animacion de la barra de carga mientras compila/instancia el WASM
 const barFill = document.getElementById('loading-bar-fill');
@@ -19,8 +19,6 @@ const intervaloBarra = setInterval(() => {
     }
 }, 400);
 
-// TODO: el nombre "FuzzyModule" debe coincidir con -s EXPORT_NAME="FuzzyModule"
-// usado en compilar.bat al generar frontend/fcm.js
 FuzzyModule().then(mod => {
     M = mod;
     console.log("WASM cargado (Fuzzy C-Means)");
@@ -50,10 +48,6 @@ function getString(ptr) {
 // VISTA 1 — IMPORTAR DATOS (llama a Modulo 1 + Modulo 2 via Modulo 6)
 // ==========================================================
 
-// Guardamos aparte los registros de PRUEBA (2017) que ya trajo el
-// archivo, porque luego los necesitaremos para pintar fechas en el
-// mapa de calor (el JSON de api_predecir ya trae anio/mes/dia, pero
-// esto nos sirve como respaldo/logging mientras probamos).
 let datosPruebaCargados = false;
 
 function cargarArchivo(tipo) {
@@ -80,7 +74,6 @@ function cargarArchivo(tipo) {
             let resultadoPtr;
 
             if (tipo === 'train') {
-                // Archivo de entrenamiento: se importa directo al dataset
                 resultadoPtr = M.ccall(
                     'api_importar_datos',
                     'string',
@@ -88,8 +81,6 @@ function cargarArchivo(tipo) {
                     [contenido]
                 );
             } else {
-                // Archivo de prueba: se importa Y se filtra a un buffer
-                // aparte (para no mezclarlo con el dataset de entrenamiento)
                 resultadoPtr = M.ccall(
                     'api_cargar_prueba',
                     'string',
@@ -143,15 +134,15 @@ function entrenarModelo() {
     const nClusters = parseInt(document.getElementById('param-clusters').value, 10);
     const m = parseFloat(document.getElementById('param-m').value);
     const maxIter = parseInt(document.getElementById('param-max-iter').value, 10);
-    const epsilon = 0.00001; // fijo por ahora, ver nota abajo
+    const epsilon = 0.00001;
 
-    console.log('Entrenando: clusters=${nClusters}, m=${m}, maxIter=${maxIter}');
+    console.log(`Entrenando: clusters=${nClusters}, m=${m}, maxIter=${maxIter}`);
 
     try {
         const resultadoPtr = M.ccall(
             'api_entrenar',
             'string',
-            ['number', 'number', 'number', 'number', 'number', 'number']
+            ['number', 'number', 'number', 'number', 'number', 'number'],
             [2015, 2016, nClusters, m, maxIter, epsilon]
         );
 
@@ -161,36 +152,32 @@ function entrenarModelo() {
         const box = document.getElementById('resultado-entrenamiento');
 
         if (resultado.exito) {
-            box.innerHTML = ` Modelo entrenado — iteraciones hasta converger: <strong>${resultado.iteraciones}</strong>,
-            clusters: <strong>${resultado.n_clusters}</strong> `;
+            box.innerHTML = `Modelo entrenado — iteraciones hasta converger: <strong>${resultado.iteraciones}</strong>,
+            clusters: <strong>${resultado.n_clusters}</strong>`;
 
             box.style.borderLeftColor = 'var(--bajo)';
             mostrarCentroides(resultado.centroides);
-        }
-        else {
+        } else {
             box.innerHTML = `Error al entrenar. ¿Cargaste el archivo de entrenamiento (2015-2016)?`;
             box.style.borderLeftColor = 'var(--alerta)';
             document.getElementById('centroides-box').innerHTML = '';
         }
-    catch (error)
-        {
-            console.error('Error en M.ccall api_entrenar:', error);
-            alert('Error: ' + error.message);
-        }
 
+    } catch (error) {
+        console.error('Error en M.ccall api_entrenar:', error);
+        alert('Error: ' + error.message);
     }
+}
 
-    function mostrarCentroides(centroides) {
-        const cont = document.getElementById('centroide-box');
+function mostrarCentroides(centroides) {
+    const cont = document.getElementById('centroides-box');
 
+    let html = '<table class="tabla"><thead><tr>';
+    html += '<th>Cluster</th><th>SST</th><th>Presión</th><th>Humedad</th><th>Viento</th><th>Cizalladura</th>';
+    html += '</tr></thead><tbody>';
 
-        let html = '<table class="tabla"><thead><tr>';
-        html += '<th>Cluster</th><th>SST</th><th>Presión</th><th>Humedad</th><th>Viento</th><th>Cizalladura</th>';
-        html += '</tr></thead><tbody>';
-
-
-        centroides.forEach(c => {
-            html += `<tr>
+    centroides.forEach(c => {
+        html += `<tr>
             <td>${c.cluster}</td>
             <td>${c.sst.toFixed(2)}</td>
             <td>${c.presion.toFixed(2)}</td>
@@ -198,103 +185,97 @@ function entrenarModelo() {
             <td>${c.viento.toFixed(2)}</td>
             <td>${c.cizalladura.toFixed(2)}</td>
         </tr>`;
-        });
+    });
 
-        html += '</tbody></table>';
-        cont.innerHTML = html;
+    html += '</tbody></table>';
+    cont.innerHTML = html;
+}
+
+// ==========================================================
+// VISTA 3 — PREDICCION (llama a Modulo 4 + dibuja mapa de calor)
+// ==========================================================
+function predecir() {
+    if (!M) {
+        alert('Espera a que el modulo WASM termine de cargar');
+        return;
     }
 
-    // ==========================================================
-    // VISTA 3 — PREDICCION (llama a Modulo 4 + dibuja mapa de calor)
-    // ==========================================================
-    function predecir() {
-        // TODO: const resultadoPtr = M.ccall('api_predecir', 'string', [], []);
-        // const registros = JSON.parse(resultadoPtr);
-        // dibujarMapaCalor(registros);
-        if (!M) {
-            alert('Espera a que el modulo WASM termine de cargar');
-            return;
-        }
-
-        if (!datosPruebaCargados) {
-            alert('Primero carga el archivo de prueba (2017) en la pestaña "1. Datos"');
-            return;
-        }
-        try {
-            const resultadoPtr = M.ccall('api_predecir', 'string', [], []);
-            const registros = JSON.parse(resultadoPtr);
-
-            console.log(`Predicciones recibidas: ${registros.length} registros`);
-            dibujarMapaCalor(registros);
-
-        } catch (error) {
-            console.error('Error en M.ccall api_predecir:', error);
-            alert('Error: ' + error.message);
-        }
+    if (!datosPruebaCargados) {
+        alert('Primero carga el archivo de prueba (2017) en la pestaña "1. Datos"');
+        return;
     }
 
-    // Dibuja una fila por registro, coloreada segun el riesgo (mu al cluster
-    // de alto riesgo). riesgo va de 0.0 (verde/bajo) a 1.0 (rojo/alto).
-    function dibujarMapaCalor(registros) {
-        const cont = document.getElementById('mapa-calor');
-        cont.innerHTML = '';
+    try {
+        const resultadoPtr = M.ccall('api_predecir', 'string', [], []);
+        const registros = JSON.parse(resultadoPtr);
 
-        if (registros.length === 0) {
-            cont.innerHTML = '<p style="color: var(--gray-500);">Sin predicciones aún.</p>';
-            return;
-        }
+        console.log(`Predicciones recibidas: ${registros.length} registros`);
+        dibujarMapaCalor(registros);
 
-        registros.forEach(r => {
-            const fila = document.createElement('div');
-            fila.className = 'fila-riesgo';
+    } catch (error) {
+        console.error('Error en M.ccall api_predecir:', error);
+        alert('Error: ' + error.message);
+    }
+}
 
-            //Color de fondo segun nivel de riesgo
-            let color;
-            if (r.riesgo < 0.25) color = 'var(--bajo)';
-            else if (r.riesgo < 0.75) color = 'var(--moderado)';
-            else color = 'var(--alerta)';
+function dibujarMapaCalor(registros) {
+    const cont = document.getElementById('mapa-calor');
+    cont.innerHTML = '';
 
-            fila.innerHTML = `
-            <span>${r.anio}-${r.mes}-${r.dia}</span>
-            <div class="barra-riesgo" style="width:${Math.round(r.riesgo * 200)}px"></div>
+    if (registros.length === 0) {
+        cont.innerHTML = '<p style="color: var(--gray-500);">Sin predicciones aún.</p>';
+        return;
+    }
+
+    registros.forEach(r => {
+        const fila = document.createElement('div');
+        fila.className = 'fila-riesgo';
+
+        let color;
+        if (r.riesgo < 0.25) color = 'var(--bajo)';
+        else if (r.riesgo < 0.75) color = 'var(--moderado)';
+        else color = 'var(--alerta)';
+
+        fila.innerHTML = `
+            <span>${r.anio}-${String(r.mes).padStart(2, '0')}-${String(r.dia).padStart(2, '0')}</span>
+            <div class="barra-riesgo" style="width:${Math.round(r.riesgo * 200)}px; background:${color};"></div>
             <span>${(r.riesgo * 100).toFixed(1)}%</span>
-             ${r.hubo_ciclon ? '<span style="color: var(--alerta);">🌀 ciclón real</span>' : ''}
+            ${r.hubo_ciclon ? '<span style="color: var(--alerta);">🌀 ciclón real</span>' : ''}
         `;
-            cont.appendChild(fila);
-        });
+        cont.appendChild(fila);
+    });
+}
+
+// ==========================================================
+// VISTA 4 — EVALUACION (llama a Modulo 5)
+// ==========================================================
+function evaluarModelo() {
+    if (!M) {
+        alert('Espera a que el modulo WASM termine de cargar');
+        return;
     }
 
-    // ==========================================================
-    // VISTA 4 — EVALUACION (llama a Modulo 5)
-    // ==========================================================
-    function evaluarModelo() {
+    const umbral = parseFloat(document.getElementById('param-umbral').value);
 
-        if (!M) {
-            alert('Espera a que el modulo WASM termine de cargar');
+    try {
+        const resultadoPtr = M.ccall('api_evaluar', 'string', ['number'], [umbral]);
+        const resultado = JSON.parse(resultadoPtr);
+
+        console.log('Evaluación:', resultado);
+
+        const box = document.getElementById('resultado-evaluacion');
+
+        if (!resultado.exito) {
+            box.innerHTML = `No se pudo evaluar. ¿Ya corriste la predicción?`;
+            box.style.borderLeftColor = 'var(--alerta)';
             return;
         }
 
-        const umbral = parseFloat(document.getElementById('param-umbral').value);
+        const mc = resultado.matriz_confusion;
+        const met = resultado.metricas;
 
-        try {
-            const resultadoPtr = M.ccall('api_evaluar', 'string', ['number'], [umbral]);
-            const resultado = JSON.parse(resultadoPtr);
-
-            console.log('Evaluación:', resultado);
-
-            const box = document.getElementById('resultado-evaluacion');
-
-            if (!resultado.exito) {
-                box.innerHTML = `No se pudo evaluar. ¿Ya corriste la predicción?`;
-                box.style.borderLeftColor = 'var(--alerta)';
-                return;
-            }
-
-            const mc = resultado.matriz_confusion;
-            const met = resultado.metricas;
-
-            box.style.borderLeftColor = 'var(--azul-claro)';
-            box.innerHTML = `
+        box.style.borderLeftColor = 'var(--azul-claro)';
+        box.innerHTML = `
             <table class="tabla">
                 <thead><tr><th></th><th>Predicho: ciclón</th><th>Predicho: sin ciclón</th></tr></thead>
                 <tbody>
@@ -314,11 +295,8 @@ function entrenarModelo() {
             </div>
         `;
 
-        }
-        catch (error)
-        {
-            console.error('❌ Error en M.ccall api_evaluar:', error);
-            alert('Error: ' + error.message);
-        }
+    } catch (error) {
+        console.error('Error en M.ccall api_evaluar:', error);
+        alert('Error: ' + error.message);
     }
-
+}

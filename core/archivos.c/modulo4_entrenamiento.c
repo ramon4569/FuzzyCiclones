@@ -106,11 +106,16 @@ int entrenamiento_identificar_cluster_riesgo(void) {
      * hay que ajustarla (por ejemplo estandarizando cada variable antes
      * de compararla). Queda documentado aqui a proposito para discutirlo
      * en la integracion final. */
+  
+    double centroide[NUM_VARIABLES];
+
+    fcm_obtener_centroide(0, centroide);
     int mejor_cluster = 0;
-    double mejor_score = g_centroides[0][VAR_SST] - g_centroides[0][VAR_PRESION];
+    double mejor_score = centroide[VAR_SST] - centroide[VAR_PRESION];
 
     for (int c = 1; c < g_n_clusters; c++) {
-        double score = g_centroides[c][VAR_SST] - g_centroides[c][VAR_PRESION];
+        fcm_obtener_centroide(c, centroide);
+        double score = centroide[VAR_SST] - centroide[VAR_PRESION];
         if (score > mejor_score) {
             mejor_score = score;
             mejor_cluster = c;
@@ -133,5 +138,5 @@ double entrenamiento_obtener_riesgo(int index) {
         entrenamiento_identificar_cluster_riesgo();
     }
 
-    return g_membresias[index][g_cluster_riesgo];
+    return fcm_obtener_membresia(index, g_cluster_riesgo);
 }

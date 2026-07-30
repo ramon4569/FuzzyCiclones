@@ -1,4 +1,10 @@
-/* Predictor de Riesgo de Ciclones — Minimalist Black & White Premium */
+/* 
+  ========================================================================
+  VARIABLES GLOBALES (CSS CUSTOM PROPERTIES)
+  Define el sistema de diseño (Design System), paletas de color monocromáticas
+  (para riesgos y temas), radios de borde, sombras y transiciones.
+  ======================================================================== 
+*/
 :root {
     --white: #ffffff;
     --black: #111111;
@@ -41,7 +47,13 @@ body {
     overflow-x: hidden;
 }
 
-/* Animaciones */
+/* 
+  ========================================================================
+  ANIMACIONES (KEYFRAMES)
+  Definiciones para transiciones de entrada (fade in, desplazamientos)
+  que mejoran la experiencia de usuario general.
+  ======================================================================== 
+*/
 @keyframes fadeInDown {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -63,6 +75,13 @@ body {
     100% { opacity: 0.7; }
 }
 
+/* 
+  ========================================================================
+  ESTRUCTURA BASE Y LAYOUT PRINCIPAL
+  Estilos estructurales para contenedores principales, la cabecera (header)
+  y tipografía de la interfaz (SPA).
+  ======================================================================== 
+*/
 header {
     background: var(--white);
     border-bottom: 1px solid var(--gray-border);
@@ -92,6 +111,13 @@ header .subtitle {
     font-size: 1.1rem;
 }
 
+/* 
+  ========================================================================
+  BARRA DE NAVEGACIÓN (NAVBAR)
+  Reglas para la disposición (Flexbox) del menú superior, botones y
+  sus estados interactivos (hover, active).
+  ======================================================================== 
+*/
 .navbar {
     display: flex;
     justify-content: center;
@@ -152,6 +178,13 @@ header .subtitle {
     font-size: 1.05rem;
 }
 
+/* 
+  ========================================================================
+  COMPONENTES DE INTERFAZ: FORMULARIOS Y BOTONES (UI KITS)
+  Clases reutilizables para grupos de inputs (input-group), cajas de texto
+  y estilos de botones con efectos interactivos y de foco.
+  ======================================================================== 
+*/
 .input-group {
     display: flex;
     flex-wrap: wrap;
@@ -227,6 +260,13 @@ header .subtitle {
     animation: fadeIn 0.5s ease forwards;
 }
 
+/* 
+  ========================================================================
+  TABLAS DE RESULTADOS Y CAJAS DE INFORMACIÓN
+  Estilos para la visualización tabular de datos (ej. centroides, matriz
+  de confusión) y contenedores para despliegue de mensajes.
+  ======================================================================== 
+*/
 .tabla {
     width: 100%;
     border-collapse: separate;
@@ -267,6 +307,13 @@ header .subtitle {
     background: var(--gray-light);
 }
 
+/* 
+  ========================================================================
+  MAPAS DE RIESGO Y LISTAS (MAPA DE CALOR)
+  Estilos aplicados dinámicamente mediante JS para renderizar las barras 
+  de riesgo lineales según los resultados de la predicción FCM.
+  ======================================================================== 
+*/
 .mapa-calor {
     display: flex;
     flex-direction: column;
@@ -306,9 +353,14 @@ header .subtitle {
     transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* =========================================
-   ANIMACIONES DE CARGA AVANZADAS (HURACÁN)
-========================================= */
+/* 
+  ========================================================================
+  PANTALLA DE CARGA AVANZADA (LOADING SCREEN)
+  Reglas CSS complejas (z-index absoluto, mix-blend-mode, animaciones
+  infinitas) para crear el efecto inmersivo del "huracán" durante la 
+  inicialización de WebAssembly.
+  ======================================================================== 
+*/
 
 #loading-screen {
     position: fixed;
@@ -422,6 +474,12 @@ header .subtitle {
     z-index: 10;
 }
 
+/* 
+  ========================================================================
+  SECCIONES Y TARJETAS INFORMATIVAS (CARDS)
+  Estilos para las tarjetas contenedoras de carga de archivos (file-card).
+  ======================================================================== 
+*/
 .file-card {
     background: var(--white);
     border-radius: var(--radius);
@@ -492,9 +550,13 @@ header .subtitle {
     background: var(--primary-hover);
 }
 
-/* =========================================
-   VISTA 6: AYUDA / ACERCA DE
-========================================= */
+/* 
+  ========================================================================
+  VISTA 6: DOCUMENTACIÓN Y AYUDA
+  Reglas para los contenedores (grid layouts) y las listas estilizadas 
+  que explican el funcionamiento y los pasos de uso del predictor.
+  ======================================================================== 
+*/
 
 .ayuda-grid {
     display: grid;
@@ -574,7 +636,13 @@ header .subtitle {
     color: var(--white);
 }
 
-/* Tooltips Premium (Flotantes) */
+/* 
+  ========================================================================
+  SISTEMA DE TOOLTIPS (AYUDAS VISUALES)
+  Generación de "globos" flotantes informativos vía pseudoelementos 
+  (:before, :after) y atributos 'data-tooltip', evitando librerías JS extra.
+  ======================================================================== 
+*/
 .tooltip {
     position: relative;
     cursor: help;

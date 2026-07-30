@@ -21,32 +21,58 @@ typedef enum {
     FORMATO_HURDAT2       = 3   // formato oficial NOAA de huracanes historicos
 } FormatoArchivo;
 
-// Analiza el contenido recibido (las primeras lineas) y adivina el formato
+/**
+ * @brief Inspecciona heurísticamente el flujo de texto para inferir su esquema.
+ * @param contenido Cadena de caracteres cruda (raw string) del archivo de entrada.
+ * @return FormatoArchivo El identificador del tipo detectado (CSV, JSON, HURDAT2 o Desconocido).
+ */
 FormatoArchivo importador_detectar_formato(const char* contenido);
 
-// Importa registros climaticos desde texto CSV.
-// Columnas esperadas (con encabezado):
-// anio,mes,dia,lat,lon,sst,presion,humedad,viento,cizalladura,hubo_ciclon
-// Retorna la cantidad de filas importadas, -1 si el formato es invalido.
+/**
+ * @brief Rutina de deserialización para esquemas tabulares separados por comas (CSV).
+ * 
+ * Columnas requeridas estrictamente (con encabezado): 
+ * anio, mes, dia, lat, lon, sst, presion, humedad, viento, cizalladura, hubo_ciclon
+ * 
+ * @param contenido Cadena de texto que contiene el archivo CSV completo.
+ * @return int Número de tuplas procesadas e insertadas en memoria, o -1 ante errores.
+ */
 int importar_csv(const char* contenido);
 
-// Importa registros climaticos desde un string JSON (array de objetos)
-// con las mismas claves que las columnas del CSV.
-// Retorna la cantidad de objetos importados, -1 si el JSON es invalido.
+/**
+ * @brief Analizador sintáctico para colecciones planas de notación de objetos (JSON).
+ * 
+ * Extrae iterativamente las entidades del arreglo JSON. Las claves requeridas
+ * coinciden uno-a-uno con los atributos del modelo relacional definido en CSV.
+ * 
+ * @param contenido Cadena de texto codificada en JSON.
+ * @return int Conteo de los objetos instanciados, o -1 en caso de formato malformado.
+ */
 int importar_json(const char* contenido);
 
-// Importa directamente el formato HURDAT2 de NOAA (best-track de huracanes).
-// Este formato no trae variables climaticas de contexto (sst, humedad, etc),
-// solo posicion/presion/viento de ciclones YA formados: se usa principalmente
-// para poblar la etiqueta hubo_ciclon en el Modulo 5 (evaluador), cruzando
-// por fecha con los registros climaticos ya cargados.
-// Retorna la cantidad de lineas de ciclon procesadas.
+/**
+ * @brief Ingesta de datos meteorológicos históricos del corpus oficial HURDAT2 de NOAA.
+ * 
+ * Operación asimétrica: El dataset HURDAT2 no provee variables climáticas basales, 
+ * sino el best-track de huracanes maduros. Se emplea primariamente para inyectar 
+ * la variable objetivo ('hubo_ciclon' = 1) en el Módulo de Evaluación (Módulo 5), 
+ * aplicando un algoritmo de cruce espaciotemporal (Join) con los datos cargados.
+ * 
+ * @param contenido Texto crudo estructurado según estándar NOAA.
+ * @return int Volumen de nodos del trayecto procesados.
+ */
 int importar_hurdat2(const char* contenido);
 
-// Punto de entrada unico para el resto del sistema (y para el API bridge):
-// detecta el formato automaticamente y delega en la funcion correspondiente.
-// Retorna la cantidad de registros importados, -1 si no se pudo determinar
-// el formato o el contenido esta vacio/corrupto.
+/**
+ * @brief Controlador maestro para el flujo de ingesta de datos.
+ * 
+ * Interfaz de entrada (Facade) para la API bridge. Realiza el descubrimiento
+ * automático de esquema (Auto-Detect) y actúa como multiplexor, delegando el
+ * parsing a la rutina especializada correspondiente.
+ * 
+ * @param contenido Cadena a importar desde el sistema de archivos del usuario.
+ * @return int Sumatoria total de los registros subidos a memoria (-1 si falla la capa proxy).
+ */
 int importar_archivo(const char* contenido);
 
 #endif // MODULO2_IMPORTADOR_H

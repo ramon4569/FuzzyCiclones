@@ -14,41 +14,88 @@
 // No sabe nada de FCM ni de archivos, solo administra datos.
 // ==========================================================
 
-// Inicializa el dataset dejando el contador de registros en cero.
+/**
+ * @brief Inicializa el conjunto de datos estableciendo su tamaño lógico en cero.
+ *
+ * Prepara el arreglo interno para aceptar nuevas inserciones reiniciando el
+ * contador principal. Esta operación tiene un orden de complejidad O(1).
+ */
 void dataset_inicializar(void);
 
-// Inserta una copia del registro al final del dataset.
-// Retorna el índice donde quedó almacenado o -1 si el dataset está lleno.
+/**
+ * @brief Inserta un nuevo registro climático al final del conjunto de datos en memoria.
+ *
+ * @param r Estructura del registro climático que se desea insertar por valor.
+ * @return int Índice de inserción dentro del arreglo estático, o -1 en caso de 
+ *         overflow (cuando se excede MAX_REGISTROS).
+ */
 int dataset_insertar(RegistroClimatico r);
 
-// Retorna una copia del registro ubicado en la posición indicada.
-// Si el índice es inválido devuelve un RegistroClimatico vacío.
+/**
+ * @brief Obtiene una copia por valor del registro ubicado en el índice solicitado.
+ *
+ * @param index Índice posicional del registro dentro del dataset interno.
+ * @return RegistroClimatico Copia íntegra de los datos. En caso de solicitar un
+ *         índice fuera de los límites (out of bounds), retorna una estructura a ceros.
+ */
 RegistroClimatico dataset_get(int index);
 
-// Retorna la cantidad de registros actualmente cargados
+/**
+ * @brief Informa la cantidad total de registros meteorológicos activos.
+ *
+ * @return int Cardinalidad del dataset en tiempo de ejecución (hasta MAX_REGISTROS).
+ */
 int dataset_total(void);
 
-// Elimina todos los registros del dataset.
+/**
+ * @brief Destruye virtualmente los registros actuales devolviendo el contador a cero.
+ *
+ * A diferencia de una liberación de memoria dinámica, aquí solo se restablece 
+ * el apuntador lógico dado que el arreglo es de asignación estática (BSS/Data).
+ */
 void dataset_limpiar(void);
 
-// Retorna el promedio de una variable climatica sobre todo el dataset.
-// indice_variable: usar las constantes VAR_* definidas en registro.h
+/**
+ * @brief Calcula el valor esperado (promedio aritmético) de una característica específica.
+ *
+ * @param indice_variable Indicador escalar mapeado por las constantes VAR_* (e.g. VAR_SST).
+ * @return double Media aritmética calculada sobre la totalidad de la muestra disponible.
+ */
 double dataset_promedio_variable(int indice_variable);
 
-// Calcula el minimo y el maximo de cada una de las NUM_VARIABLES
-// variables climaticas presentes en el dataset. Se usa antes de
-// correr FCM para poder normalizar (Modulo 3 trabaja mejor con
-// variables en rangos comparables, ej. 0-1).
+/**
+ * @brief Computa iterativamente los límites numéricos (infimo y supremo) de las variables.
+ *
+ * Fundamental como preprocesamiento estadístico antes de aplicar normalización
+ * min-max para la convergencia espacial del algoritmo Fuzzy C-Means en el Módulo 3.
+ *
+ * @param min_out Arreglo de salida donde se almacenan las cotas inferiores (min).
+ * @param max_out Arreglo de salida donde se almacenan las cotas superiores (max).
+ */
 void dataset_min_max(double min_out[NUM_VARIABLES], double max_out[NUM_VARIABLES]);
 
-// Filtra registros por rango de anios y los copia a un buffer destino.
-// Util para separar "entrenamiento 2015-2016" de "prueba 2017".
-// Retorna la cantidad de registros copiados a destino.
+/**
+ * @brief Segmenta el dataset extrayendo un subconjunto dentro de una ventana temporal.
+ *
+ * Actúa como un filtro pasabanda en el dominio del tiempo (años). Útil para
+ * el particionamiento Hold-out de datos (Set de entrenamiento vs Set de prueba).
+ *
+ * @param anio_inicio Límite inferior de la ventana temporal (inclusivo).
+ * @param anio_fin Límite superior de la ventana temporal (inclusivo).
+ * @param destino Puntero base al arreglo donde se instanciarán los registros copiados.
+ * @param max_destino Tamaño de búfer reservado para evitar segment fault por desbordamiento.
+ * @return int Conteo real de las observaciones extraídas con éxito.
+ */
 int dataset_filtrar_por_anio(int anio_inicio, int anio_fin,
                               RegistroClimatico* destino, int max_destino);
 
-// Actualiza el campo hubo_ciclon de un registro existente.
-// Retorna 1 si la actualización fue exitosa o 0 si el índice es inválido.
+/**
+ * @brief Inyecta la clasificación real (Ground Truth) en un registro preexistente.
+ *
+ * @param index Índice del registro donde se modificará el atributo de salida.
+ * @param valor Etiqueta binaria representativa del acaecimiento de un ciclón tropical (0 o 1).
+ * @return int Bandera booleana de confirmación: 1 para mutación exitosa, 0 ante error.
+ */
 int dataset_marcar_ciclon(int index, int valor);
 
 

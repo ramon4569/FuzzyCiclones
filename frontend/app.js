@@ -41,6 +41,11 @@ FuzzyModule().then(mod => {
 // ==========================================================
 // NAVEGACION ENTRE VISTAS
 // ==========================================================
+/**
+ * Oculta todas las vistas de la interfaz y muestra únicamente la solicitada.
+ * Actualiza también el estado activo del botón de navegación correspondiente.
+ * @param {string} nombre - Identificador de la vista a mostrar (ej. 'datos', 'entrenamiento').
+ */
 function mostrarVista(nombre) {
     document.querySelectorAll('.vista').forEach(v => v.style.display = 'none');
     document.getElementById('vista-' + nombre).style.display = 'block';
@@ -48,6 +53,12 @@ function mostrarVista(nombre) {
     event.target.classList.add('active');
 }
 
+/**
+ * Convierte un puntero de memoria de WebAssembly (WASM) a una cadena de texto (String) en JavaScript.
+ * Utiliza la función interna UTF8ToString expuesta por el módulo compilado (M).
+ * @param {number} ptr - Puntero a la dirección de memoria en WASM.
+ * @returns {string} La cadena de texto decodificada.
+ */
 function getString(ptr) {
     return M.UTF8ToString(ptr);
 }
@@ -58,6 +69,11 @@ function getString(ptr) {
 
 let datosPruebaCargados = false;
 
+/**
+ * Lee un archivo local seleccionado por el usuario y envía su contenido al módulo C (WASM).
+ * Dependiendo del tipo ('train' o 'test'), invoca la función C correspondiente mediante `M.ccall`.
+ * @param {string} tipo - Tipo de archivo a cargar ('train' para entrenamiento, 'test' para prueba).
+ */
 function cargarArchivo(tipo) {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -130,6 +146,14 @@ function cargarArchivo(tipo) {
     lector.readAsText(archivo);
 }
 
+/**
+ * Descarga asíncronamente datos meteorológicos históricos desde la API de Open-Meteo.
+ * Prepara los registros y los envía a la memoria del módulo WASM invocando las funciones C 
+ * de importación o carga de prueba según el tipo.
+ * Maneja la asignación y liberación de memoria dinámica (`_malloc` y `_free`) en WASM para
+ * transferir eficientemente grandes cadenas JSON.
+ * @param {string} tipo - 'train' para datos de entrenamiento, 'test' para datos de prueba.
+ */
 async function obtenerEntrenamientoAPI(tipo = 'train') {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -271,6 +295,11 @@ async function obtenerEntrenamientoAPI(tipo = 'train') {
 // ==========================================================
 // VISTA 2 — ENTRENAMIENTO (llama a Modulo 3 + Modulo 4)
 // ==========================================================
+/**
+ * Inicia el proceso de entrenamiento del modelo Fuzzy C-Means (FCM) enviando los parámetros
+ * configurados por el usuario (clusters, grado difuso m, iteraciones) a la función C `api_entrenar`.
+ * Procesa la respuesta en formato JSON para actualizar la UI con los resultados y mostrar los centroides.
+ */
 function entrenarModelo() {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -315,6 +344,12 @@ function entrenarModelo() {
     }
 }
 
+/**
+ * Renderiza dinámicamente en el DOM una tabla HTML con los centroides generados
+ * tras el entrenamiento del modelo FCM. Muestra las coordenadas del centroide
+ * para cada variable climática.
+ * @param {Array} centroides - Arreglo de objetos con las coordenadas de cada centroide.
+ */
 function mostrarCentroides(centroides) {
     const cont = document.getElementById('centroides-box');
 
@@ -343,6 +378,11 @@ function mostrarCentroides(centroides) {
 let mapa = null; // Instancia del mapa Leaflet
 let marcadores = []; // Para limpiar marcadores anteriores
 
+/**
+ * Invoca la función C `api_predecir` para calcular el riesgo de ciclón sobre el dataset de prueba.
+ * Recibe un JSON con las predicciones y orquesta el renderizado visual de los resultados
+ * inicializando el mapa Leaflet y delegando el pintado a funciones especializadas.
+ */
 function predecir() {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -381,6 +421,13 @@ function predecir() {
     }
 }
 
+/**
+ * Dibuja los resultados de la predicción en un mapa interactivo utilizando la biblioteca Leaflet.
+ * Crea marcadores circulares (`L.circleMarker`) cuyas propiedades (tamaño, color) varían en 
+ * función del riesgo calculado. Asocia a cada marcador un popup (Tooltip) con detalles técnicos
+ * e influencias de cada variable climática.
+ * @param {Array} registros - Arreglo de objetos con las predicciones por coordenada.
+ */
 function dibujarMapaLeaflet(registros) {
     // Limpiar marcadores anteriores
     marcadores.forEach(m => mapa.removeLayer(m));
@@ -426,6 +473,12 @@ function dibujarMapaLeaflet(registros) {
     });
 }
 
+/**
+ * Renderiza una representación visual (tipo mapa de calor lineal/lista) de los riesgos predichos.
+ * Genera elementos del DOM que muestran visualmente la probabilidad de riesgo mediante barras
+ * de colores (verde, amarillo, rojo) y compara la predicción con la ocurrencia real de ciclones (evaluación).
+ * @param {Array} registros - Arreglo con las predicciones y datos reales.
+ */
 function dibujarMapaCalor(registros) {
     const cont = document.getElementById('mapa-calor');
     cont.innerHTML = '';
@@ -470,6 +523,12 @@ function dibujarMapaCalor(registros) {
 // ==========================================================
 // VISTA 4 — EVALUACION (llama a Modulo 5)
 // ==========================================================
+/**
+ * Solicita a la capa C la evaluación del rendimiento predictivo del modelo invocando `api_evaluar`.
+ * Envía el umbral de riesgo definido en la UI.
+ * Construye y renderiza una matriz de confusión y despliega métricas de clasificación 
+ * (Exactitud, Precisión, Sensibilidad, F1-Score) extraídas del JSON retornado por WASM.
+ */
 function evaluarModelo() {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -536,6 +595,12 @@ const coordenadasCaribe = [
     {lat: 26.0, lon: -95.0}, {lat: 28.0, lon: -90.0}, {lat: 16.0, lon: -62.0}
 ];
 
+/**
+ * Consulta APIs externas (Open-Meteo Weather y Marine) de manera asíncrona para obtener
+ * datos climáticos en tiempo real de ubicaciones estratégicas del Caribe.
+ * Formatea estos datos en JSON, los carga en el módulo C usando `api_cargar_prueba`, 
+ * ejecuta la predicción (`api_predecir`) y manda a pintar los resultados instantáneos en la interfaz.
+ */
 async function obtenerYPredecirTiempoReal() {
     if (!M) {
         alert('Espera a que el modulo WASM termine de cargar');
@@ -637,6 +702,12 @@ async function obtenerYPredecirTiempoReal() {
     }
 }
 
+/**
+ * Renderiza las predicciones de tiempo real en un mapa Leaflet independiente.
+ * Añade marcadores visuales con el estado de riesgo actual y popups informativos
+ * detallando las variables meteorológicas del momento.
+ * @param {Array} registros - Datos meteorológicos y predicciones de riesgo actuales.
+ */
 function dibujarMapaLeafletRealtime(registros) {
     marcadoresRealtime.forEach(m => mapaRealtime.removeLayer(m));
     marcadoresRealtime = [];
@@ -674,6 +745,12 @@ function dibujarMapaLeafletRealtime(registros) {
     });
 }
 
+/**
+ * Dibuja la lista/mapa de calor para las predicciones de riesgo obtenidas en tiempo real.
+ * Crea elementos de interfaz que ilustran gráficamente el nivel de alerta para las coordenadas
+ * evaluadas al instante.
+ * @param {Array} registros - Resultados de predicción actual.
+ */
 function dibujarMapaCalorRealtime(registros) {
     const cont = document.getElementById('mapa-calor-tiemporeal');
     cont.innerHTML = '';

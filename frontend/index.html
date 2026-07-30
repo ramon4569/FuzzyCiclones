@@ -10,7 +10,13 @@
 </head>
 <body>
 
-    <!-- LOADING SCREEN -->
+    <!-- 
+      ========================================================================
+      PANTALLA DE CARGA (LOADING SCREEN)
+      Contenedor superpuesto que bloquea la UI mientras se inicializa y descarga
+      el módulo WebAssembly (WASM). Utiliza animaciones CSS para el efecto visual.
+      ========================================================================
+    -->
     <div id="loading-screen">
         <img src="hurricane_real.jpg" class="hurricane-real" alt="Fondo Huracan">
         
@@ -28,7 +34,13 @@
         <div class="loading-footer">Datos NOAA-NHC simulados</div>
     </div>
 
-    <!-- HEADER PRINCIPAL-->
+    <!-- 
+      ========================================================================
+      CABECERA PRINCIPAL (HEADER)
+      Contiene la marca de la aplicación y el título principal. Se muestra
+      de forma persistente en la parte superior de la interfaz.
+      ========================================================================
+    -->
     <header>
         <div class="container-header">
             <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
@@ -39,7 +51,13 @@
         </div>
     </header>
 
-    <!-- NAV -->
+    <!-- 
+      ========================================================================
+      BARRA DE NAVEGACIÓN (NAV)
+      Menú de botones que controla el enrutamiento visual en el cliente (SPA).
+      Llama a la función JS mostrarVista() para alternar contenedores del DOM.
+      ========================================================================
+    -->
     <nav class="navbar">
         <button class="nav-btn active" onclick="mostrarVista('datos')">1. Datos</button>
         <button class="nav-btn" onclick="mostrarVista('entrenamiento')">2. Entrenamiento</button>
@@ -51,7 +69,14 @@
 
     <main class="container">
 
-        <!-- VISTA 1: IMPORTAR DATOS (Modulo 1 y 2) -->
+        <!-- 
+          ========================================================================
+          VISTA 1: GESTIÓN E IMPORTACIÓN DE DATOS
+          Sección para la ingesta de datasets. Permite la carga de archivos locales
+          vía File API o la descarga asíncrona (Fetch API) de series temporales
+          desde Open-Meteo. Comunica con los módulos C de ingesta.
+          ========================================================================
+        -->
         <section id="vista-datos" class="vista">
             <div class="section-header">
                 <h2>Importación de Datos Históricos</h2>
@@ -112,7 +137,14 @@
             <div id="resultado-importacion" class="resultado-box"></div>
         </section>
 
-        <!-- VISTA 2: ENTRENAMIENTO (Modulo 3 + Modulo 4) -->
+        <!-- 
+          ========================================================================
+          VISTA 2: CONFIGURACIÓN Y ENTRENAMIENTO (Fuzzy C-Means)
+          Interfaz para definir hiperparámetros del algoritmo FCM (clusters,
+          exponente difuso, iteraciones). Al ejecutar, envía los valores a C
+          y renderiza los centroides resultantes en una tabla del DOM.
+          ========================================================================
+        -->
         <section id="vista-entrenamiento" class="vista" style="display:none">
             <div class="section-header">
                 <h2>Entrenamiento del modelo</h2>
@@ -133,7 +165,14 @@
             <div id="centroides-box"></div>
         </section>
 
-        <!-- VISTA 3: PREDICCION (Modulo 4 + Visualizador) -->
+        <!-- 
+          ========================================================================
+          VISTA 3: PREDICCIÓN Y VISUALIZACIÓN GEOGRÁFICA
+          Contenedor principal para los resultados predictivos históricos.
+          Incluye el contenedor del mapa Leaflet (ID: 'map') y la zona de
+          renderizado del mapa de calor en formato lista (ID: 'mapa-calor').
+          ========================================================================
+        -->
         <section id="vista-prediccion" class="vista" style="display:none">
             <div class="section-header">
                 <h2>Prediccion sobre datos de prueba</h2>
@@ -150,7 +189,14 @@
             <div id="mapa-calor" class="mapa-calor"></div>
         </section>
 
-        <!-- VISTA 4: EVALUACION (Modulo 5) -->
+        <!-- 
+          ========================================================================
+          VISTA 4: EVALUACIÓN DE DESEMPEÑO DEL MODELO
+          Módulo de validación cruzada. Solicita al backend WASM el cálculo de 
+          la matriz de confusión y métricas estándar (Accuracy, Precision, Recall, F1)
+          basadas en un umbral de decisión ajustable por el usuario.
+          ========================================================================
+        -->
         <section id="vista-evaluacion" class="vista" style="display:none">
             <div class="section-header">
                 <h2>Evaluacion contra ciclones reales</h2>
@@ -166,7 +212,14 @@
             <div id="resultado-evaluacion" class="resultado-box"></div>
         </section>
 
-        <!-- VISTA 5: TIEMPO REAL -->
+        <!-- 
+          ========================================================================
+          VISTA 5: MONITOREO CLIMÁTICO EN TIEMPO REAL
+          Orquesta el flujo de: consumo de APIs REST externas -> inyección al WASM
+          -> predicción -> actualización del DOM. Contiene su propia instancia 
+          de Leaflet (ID: 'map-realtime') para aislar el contexto geográfico.
+          ========================================================================
+        -->
         <section id="vista-tiemporeal" class="vista" style="display:none">
             <div class="section-header">
                 <h2>Predicción en Tiempo Real (API)</h2>
@@ -186,7 +239,13 @@
             <div id="mapa-calor-tiemporeal" class="mapa-calor"></div>
         </section>
 
-        <!-- VISTA 6: AYUDA / ACERCA DE -->
+        <!-- 
+          ========================================================================
+          VISTA 6: DOCUMENTACIÓN Y GUÍA DE USUARIO
+          Sección informativa puramente HTML/CSS con la descripción del flujo
+          operativo y detalles técnicos del proyecto.
+          ========================================================================
+        -->
         <section id="vista-ayuda" class="vista" style="display:none">
             <div class="section-header">
                 <h2>Acerca del Sistema & Guía de Uso</h2>

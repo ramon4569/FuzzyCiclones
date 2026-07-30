@@ -20,17 +20,20 @@
 // el JSON de entrada/salida y delega en los otros modulos.
 // ==========================================================
 
-// Buffer estatico auxiliar para armar arrays de registros de prueba
-// antes de pasarlos al Modulo 4 (no se toca el dataset global del
-// Modulo 1 para no mezclar entrenamiento con prueba).
+/**
+ * @brief Buffer de memoria estática exclusivo para aislar el subset de pruebas (Test Set).
+ * 
+ * Separa los datos de evaluación del dataset global (Módulo 1) para prevenir
+ * fuga de datos (Data Leakage) durante la fase de entrenamiento y predicción.
+ */
 static RegistroClimatico g_buffer_prueba[MAX_REGISTROS];
 static int g_total_prueba = 0;
 
-// -----------------------------------------------------------
-// Helper interno: convierte el enum FormatoArchivo (Modulo 2)
-// a un string legible para el JSON. No es logica de negocio,
-// solo texto de presentacion, por eso vive aca y no en Modulo 2.
-// -----------------------------------------------------------
+/**
+ * @brief Utilidad interna: Convierte el enumerador de formato a una representación textual (String).
+ * 
+ * Abstracción estricta de presentación para la serialización de respuestas JSON.
+ */
 static const char* formato_a_texto(FormatoArchivo formato) {
     switch (formato) {
     case FORMATO_CSV:     return "csv";
@@ -44,8 +47,15 @@ static const char* formato_a_texto(FormatoArchivo formato) {
 // Carga de datos (Modulo 1 + Modulo 2)
 // -----------------------------------------------------------
 
-// Recibe un string (CSV, JSON o HURDAT2) desde el navegador (por ejemplo,
-// leido de un <input type="file">) y lo importa al dataset en memoria.
+/**
+ * @brief Endpoint de ingesta de datos (Data Ingestion) desde el frontend.
+ * 
+ * Parsea el payload del archivo en memoria (CSV, JSON o HURDAT2) y lo integra 
+ * al dataset maestro a través del motor del Módulo 2.
+ * 
+ * @param contenido Buffer de caracteres con el archivo subido por el usuario.
+ * @return char* Respuesta JSON conteniendo estado de éxito, formato detectado y volumen importado.
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_importar_datos(char* contenido) {
     static char buffer[512];
@@ -78,12 +88,19 @@ void api_dataset_limpiar(void) {
     dataset_limpiar();
 }
 
-// Recibe el contenido crudo del archivo de PRUEBA (ej. el CSV de 2017)
-// desde el navegador, lo importa al dataset del Modulo 1 (via Modulo 2,
-// igual que cualquier otro archivo) y de una vez filtra ese rango de
-// anios hacia g_buffer_prueba, dejando todo listo para api_predecir().
-// Retorna JSON con cuantos registros se importaron y cuantos quedaron
-// disponibles en el buffer de prueba.
+/**
+ * @brief Endpoint para inicializar de forma asíncrona el pipeline de testing.
+ * 
+ * Ejecuta una ingesta convencional al Módulo 1, pero inmediatamente aplica un
+ * filtro cronológico estricto (anio_inicio, anio_fin) clonando la submuestra
+ * hacia el buffer local 'g_buffer_prueba'. Deja el estado de la VM listo
+ * para ejecutar rutinas de inferencia.
+ * 
+ * @param contenido Payload del archivo de test.
+ * @param anio_inicio Límite inferior de la ventana temporal.
+ * @param anio_fin Límite superior de la ventana temporal.
+ * @return char* JSON con métricas de la partición procesada.
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_cargar_prueba(char* contenido, int anio_inicio, int anio_fin) {
     static char buffer[512];
@@ -110,9 +127,15 @@ char* api_cargar_prueba(char* contenido, int anio_inicio, int anio_fin) {
 // Entrenamiento y prediccion (Modulo 3 + Modulo 4)
 // -----------------------------------------------------------
 
-// Entrena el modelo con los registros del dataset dentro del rango de
-// anios indicado. Retorna JSON con info del entrenamiento (iteraciones,
-// centroides resultantes).
+/**
+ * @brief Interfaz para el ciclo de aprendizaje de máquina (Training Loop).
+ * 
+ * Acciona el algoritmo Fuzzy C-Means (Módulos 3 y 4) limitando el dataset 
+ * a la ventana temporal indicada. Exporta la topología resultante.
+ * 
+ * @return char* Payload JSON conteniendo número de iteraciones de convergencia
+ *         y el vector espacial de centroides finales (Clusters).
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_entrenar(int anio_inicio, int anio_fin, int n_clusters, double m,
     int max_iter, double epsilon) {
@@ -159,9 +182,15 @@ char* api_entrenar(int anio_inicio, int anio_fin, int n_clusters, double m,
     return buffer;
 }
 
-// Corre la prediccion sobre los registros de prueba ya cargados con
-// api_cargar_prueba(). Retorna JSON con el riesgo (mu al cluster de
-// alto riesgo) de cada registro.
+/**
+ * @brief Interfaz de Inferencia / Scoring.
+ * 
+ * Ejecuta un paso hacia adelante (Forward Pass) del modelo FCM sobre el subset de
+ * pruebas cargado previamente ('g_buffer_prueba'). Cuantifica el grado de membresía 
+ * respecto al cluster de máximo riesgo hidrometeorológico.
+ * 
+ * @return char* JSON detallado con predicciones de riesgo (mu) por cada instancia.
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_predecir(void) {
     static char buffer[2 * 1024 * 1024];
@@ -215,8 +244,15 @@ char* api_predecir(void) {
 // Evaluacion (Modulo 5)
 // -----------------------------------------------------------
 
-// Calcula la matriz de confusion y las metricas contra los ciclones
-// reales, usando el umbral indicado (ej. 0.5).
+/**
+ * @brief Módulo final de análisis de rendimiento predictivo.
+ * 
+ * Invoca el cálculo de la matriz de confusión frente a una función escalón
+ * regulada por el parámetro 'umbral'.
+ * 
+ * @param umbral Valor continuo (Threshold) de decisión binaria.
+ * @return char* JSON con métricas normalizadas de clasificación (F1, Accuracy, etc).
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_evaluar(double umbral) {
     return evaluador_generar_reporte_json(umbral, g_buffer_prueba, g_total_prueba);
@@ -226,8 +262,12 @@ char* api_evaluar(double umbral) {
 // Utilidades para el visualizador (Modulo 7)
 // -----------------------------------------------------------
 
-// Devuelve los c centroides entrenados en JSON, para pintarlos en el
-// grafico/heatmap del frontend.
+/**
+ * @brief Provee coordenadas multivariadas de los clústeres para representación gráfica.
+ * 
+ * Empleado por el frontend para renderizar topologías como Heatmaps o Scatter Plots.
+ * @return char* JSON con las centroides normalizadas vigentes en memoria.
+ */
 EMSCRIPTEN_KEEPALIVE
 char* api_obtener_centroides(void) {
     static char buffer[2048];

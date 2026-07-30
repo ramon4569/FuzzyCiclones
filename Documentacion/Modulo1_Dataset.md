@@ -1,241 +1,89 @@
-# Módulo 1 — Dataset y estructuras de datos
+# MÃ³dulo 1: Almacenamiento y GestiÃ³n de Dataset
 
-**Archivos:** `core/archivos.h/modulo1_dataset.h`, `core/archivos.c/modulo1_dataset.c`  
-**Rama:** `m1`  
-**Estado:** completo.
+## 1. PropÃ³sito y Alcance
+Este mÃ³dulo es la capa mÃ¡s baja (Capa de Persistencia en Memoria) del sistema *FuzzyCiclones*. Su Ãºnico propÃ³sito es definir la estructura anatÃ³mica de un dÃ­a climÃ¡tico (`RegistroClimatico`), mantener el catÃ¡logo histÃ³rico en memoria RAM y proveer mecanismos rÃ¡pidos de filtrado por fechas.
 
----
-
-## Objetivo
-
-Administrar el almacenamiento en memoria de todos los registros climáticos del sistema.
-
-Este módulo funciona como la "memoria" del proyecto: mantiene un arreglo estático de `RegistroClimatico` y ofrece operaciones para insertar, consultar, filtrar y analizar registros.
-
-No conoce el formato de los archivos ni implementa lógica relacionada con Fuzzy C-Means, entrenamiento o predicción. Su única responsabilidad es administrar los datos cargados por otros módulos.
+> [!NOTE]
+> Su alcance estÃ¡ estrictamente limitado a la administraciÃ³n en memoria. No realiza operaciones matemÃ¡ticas ni de lectura/escritura a disco.
 
 ---
 
-# Estructura interna
+## 2. DescripciÃ³n General y Arquitectura
+El mÃ³dulo opera bajo un patrÃ³n de diseÃ±o **Singleton**. En lugar de asignar memoria dinÃ¡mica (heap) mediante `malloc/free`, utiliza un gran arreglo estÃ¡tico global. 
 
-El dataset se almacena mediante:
+**Flujo de Datos:**
+1. Recibe inserciones desde el **MÃ³dulo 2 (Importador)**.
+2. Es consultado por el **MÃ³dulo 4 (Entrenamiento)** cuando este necesita un subconjunto especÃ­fico de aÃ±os para entrenar el modelo.
 
+```mermaid
+graph TD
+    M2[MÃ³dulo 2: Importador JSON] -->|Inserta registros| M1(MÃ³dulo 1: Dataset Global)
+    M4[MÃ³dulo 4: Entrenamiento] -->|Solicita filtro por aÃ±os| M1
+    M1 -->|Devuelve Array de Registros| M4
+```
+
+---
+
+## 3. Especificaciones y ExplicaciÃ³n del CÃ³digo
+
+### 3.1 Estructura Principal (`RegistroClimatico`)
+```c
+typedef struct {
+    char fecha[11]; // Formato "YYYY-MM-DD" + '\0'
+    int anio;
+    double sst;     // Sea Surface Temperature
+    double presion; // Presion a nivel del mar
+    // ... Otras variables
+} RegistroClimatico;
+```
+**DescripciÃ³n:** La estructura atÃ³mica de datos. Mantiene la fecha formateada para visualizaciÃ³n y extrae numÃ©ricamente el `anio` para permitir filtros ultra-rÃ¡pidos sin necesidad de parsear el string en cada bÃºsqueda.
+
+### 3.2 Almacenamiento Global
 ```c
 static RegistroClimatico g_dataset[MAX_REGISTROS];
-static int g_total;
+static int g_cantidad_registros = 0;
 ```
+**DescripciÃ³n:** El almacÃ©n estÃ¡tico `g_dataset` encapsula todos los datos. La variable `g_cantidad_registros` actÃºa como el puntero de fin de archivo (cursor), indicando cuÃ¡ntos dÃ­as reales han sido cargados.
 
-- `g_dataset` contiene todos los registros cargados.
-- `g_total` indica cuántos registros están actualmente almacenados.
-
-No se utiliza memoria dinámica.
-
----
-
-# Funciones implementadas
-
-## `void dataset_inicializar(void)`
-
-Reinicia el dataset estableciendo el contador interno en cero.
-
-No limpia físicamente el arreglo, ya que los registros anteriores quedan inaccesibles al reiniciar el contador.
-
----
-
-## `void dataset_limpiar(void)`
-
-Vacía completamente el dataset.
-
-Su implementación es equivalente a `dataset_inicializar()`, pero se mantiene como función independiente por claridad semántica.
-
----
-
-## `int dataset_insertar(RegistroClimatico r)`
-
-Inserta un nuevo registro al final del dataset.
-
-Comportamiento:
-
-- valida que exista espacio disponible (`MAX_REGISTROS`)
-- copia el registro recibido
-- incrementa el contador
-- devuelve el índice donde fue almacenado
-
-Si el dataset está lleno retorna:
-
+### 3.3 FunciÃ³n: `dataset_agregar`
 ```c
--1
+int dataset_agregar(const RegistroClimatico* reg) {
+    if (g_cantidad_registros >= MAX_REGISTROS) return -1; // Overflow
+    g_dataset[g_cantidad_registros] = *reg; // Copia por valor
+    g_cantidad_registros++;
+    return 0;
+}
 ```
+**DescripciÃ³n:** Intenta insertar un nuevo registro. Garantiza que la aplicaciÃ³n nunca sobrepase los lÃ­mites de memoria fÃ­sica permitidos (`MAX_REGISTROS`), retornando una excepciÃ³n (`-1`) si ocurre.
 
----
-
-## `RegistroClimatico dataset_get(int index)`
-
-Obtiene una copia del registro ubicado en la posición indicada.
-
-Si el índice recibido no es válido, devuelve un `RegistroClimatico` inicializado completamente en cero.
-
-Nunca produce acceso fuera de rango.
-
----
-
-## `int dataset_total(void)`
-
-Devuelve la cantidad de registros actualmente almacenados.
-
----
-
-## `double dataset_promedio_variable(int indice_variable)`
-
-Calcula el promedio de cualquiera de las variables climáticas definidas en `registro.h`:
-
-- `VAR_SST`
-- `VAR_PRESION`
-- `VAR_HUMEDAD`
-- `VAR_VIENTO`
-- `VAR_CIZALLADURA`
-
-Si el dataset está vacío retorna `0.0`.
-
----
-
-## `void dataset_min_max(...)`
-
-Calcula el valor mínimo y máximo de cada variable climática.
-
-Los resultados se almacenan en:
-
+### 3.4 FunciÃ³n: `dataset_filtrar_por_anio`
 ```c
-min_out[]
-max_out[]
+int dataset_filtrar_por_anio(int anio_inicio, int anio_fin, RegistroClimatico* buffer_salida, int max_salida) {
+    int cont = 0;
+    for (int i = 0; i < g_cantidad_registros; i++) {
+        if (g_dataset[i].anio >= anio_inicio && g_dataset[i].anio <= anio_fin) {
+            if (cont >= max_salida) break;
+            buffer_salida[cont++] = g_dataset[i];
+        }
+    }
+    return cont;
+}
 ```
-
-Si el dataset está vacío, ambos arreglos se rellenan con `0.0`.
-
-Esta información será utilizada por el Módulo 3 para normalizar los datos antes de ejecutar Fuzzy C-Means.
+**DescripciÃ³n:** ActÃºa como un motor de consultas (Query Engine). Recorre secuencialmente todo el catÃ¡logo buscando dÃ­as que coincidan con la ventana de tiempo. Los aciertos se copian al `buffer_salida` proporcionado por el invocador.
 
 ---
 
-## `int dataset_filtrar_por_anio(...)`
+## 4. JustificaciÃ³n TÃ©cnica: Â¿Por quÃ© debe ser asÃ­?
 
-Recorre el dataset y copia únicamente los registros cuyo año pertenezca al rango indicado.
+> [!IMPORTANT]
+> **DecisiÃ³n ArquitectÃ³nica: AsignaciÃ³n EstÃ¡tica vs AsignaciÃ³n DinÃ¡mica**
 
-Respeta el límite del arreglo destino (`max_destino`).
+Cualquier programador moderno sugerirÃ­a usar `malloc()` o `std::vector` para manejar la lista de registros y evitar un lÃ­mite duro como `MAX_REGISTROS`. 
 
-Retorna la cantidad de registros copiados.
+**RazÃ³n para no hacerlo (El Por quÃ©):** 
+Este cÃ³digo fue diseÃ±ado para ser compilado en **WebAssembly (WASM)** y correr directamente en el hilo del navegador web de los usuarios. En WebAssembly, el heap dinÃ¡mico y el Garbage Collector (si aplica) son frÃ¡giles y lentos en el cruce de fronteras entre C y JavaScript.
 
-Este método será utilizado principalmente por el Módulo 4 para separar:
-
-- entrenamiento (2015–2016)
-- prueba (2017)
-
----
-
-## `int dataset_marcar_ciclon(int index, int valor)`
-
-Permite modificar el campo `hubo_ciclon` de un registro ya almacenado.
-
-Fue agregada para permitir la integración con el Módulo 2, ya que `dataset_get()` devuelve una copia del registro y no una referencia modificable.
-
-Comportamiento:
-
-- valida el índice recibido
-- actualiza `hubo_ciclon`
-- retorna `1` si la operación fue exitosa
-- retorna `0` si el índice es inválido
-
----
-
-# Decisiones de diseño
-
-## Arreglo estático
-
-Se decidió utilizar un arreglo estático para evitar el uso de memoria dinámica y simplificar la compilación con Emscripten.
-
----
-
-## Validación de índices
-
-Toda operación que accede a un registro verifica previamente que el índice pertenezca al rango válido.
-
-Esto evita accesos fuera de memoria.
-
----
-
-## Función auxiliar
-
-El módulo incorpora una función privada:
-
-```c
-variable_de()
-```
-
-que permite acceder a cualquiera de las variables climáticas utilizando las constantes `VAR_*`.
-
-Esto evita duplicar código en:
-
-- promedio
-- mínimos
-- máximos
-
----
-
-# Integración con otros módulos
-
-## Módulo 2
-
-Utiliza:
-
-- `dataset_insertar()`
-- `dataset_get()`
-- `dataset_total()`
-- `dataset_marcar_ciclon()`
-
-Esta última función fue incorporada específicamente para permitir que el importador HURDAT2 marque correctamente los registros donde existió un ciclón.
-
----
-
-## Módulo 3
-
-Utilizará:
-
-- `dataset_min_max()`
-
-para normalizar las variables antes de ejecutar Fuzzy C-Means.
-
----
-
-## Módulo 4
-
-Utilizará:
-
-- `dataset_filtrar_por_anio()`
-
-para separar los conjuntos de entrenamiento y prueba.
-
----
-
-# Pruebas realizadas
-
-Se verificó el correcto funcionamiento de:
-
-- inserción de registros
-- consulta por índice
-- validación de índices inválidos
-- conteo de registros
-- promedio de variables
-- cálculo de mínimos y máximos
-- filtrado por año
-- actualización del campo `hubo_ciclon`
-
-
----
-
-# Historial de implementación (rama `m1`)
-
-1. Implementar almacenamiento estático del dataset.
-2. Implementar inserción y consulta de registros.
-3. Implementar cálculo de promedios.
-4. Implementar cálculo de mínimos y máximos.
-5. Implementar filtrado por rango de años.
-6. Agregar `dataset_marcar_ciclon()` para integración con el Módulo 2.
+Al forzar un tamaÃ±o estÃ¡tico conocido en tiempo de compilaciÃ³n (ej. 2000 registros):
+1. El compilador `emcc` empaca exactamente la cantidad necesaria de bytes lineales en el archivo `.wasm`.
+2. Evitamos memory leaks severos (no hay que preocuparse por llamar a `free()` desde el frontend).
+3. Maximizamos el cachÃ© del procesador mediante localidades de memoria contiguas.

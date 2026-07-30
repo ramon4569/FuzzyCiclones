@@ -43,8 +43,17 @@ typedef struct {
     int    hubo_ciclon;
 } RegistroClimatico;
 
-// Convierte un RegistroClimatico en el vector de entrada que espera
-// el nucleo Fuzzy C-Means (Modulo 3)
+/**
+ * @brief Convierte un RegistroClimatico en un vector de características continuo.
+ *
+ * Esta función toma una estructura de observación climática (RegistroClimatico)
+ * y extrae las variables predictoras clave, depositándolas secuencialmente en un 
+ * arreglo. Este arreglo (vector_out) representa el formato de entrada numérico 
+ * estándar requerido por el núcleo del algoritmo Fuzzy C-Means (Módulo 3).
+ *
+ * @param r Puntero constante a la estructura de registro climático que contiene la observación.
+ * @param vector_out Arreglo de salida (double) pre-asignado con tamaño de al menos NUM_VARIABLES.
+ */
 void registro_a_vector(const RegistroClimatico* r, double vector_out[NUM_VARIABLES]);
 
 #endif // REGISTRO_H

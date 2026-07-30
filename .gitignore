@@ -365,3 +365,6 @@ FodyWeavers.xsd
 # Binarios locales de los tests de cada modulo (gcc -o tests/*.exe)
 tests/*.exe
 tests/*.o
+
+# Emscripten temporary output files
+frontend/*.tmp*
